@@ -1,0 +1,32 @@
+# dependencies
+/node_modules
+/package-lock.json
+/yarn.lock
+
+# build artifacts
+/build
+/dist
+/public/build
+
+# environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# logs and debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# testing and coverage
+/coverage
+.nyc_output
+
+# editor and OS files
+.DS_Store
+.idea
+.vscode
+*.iml
