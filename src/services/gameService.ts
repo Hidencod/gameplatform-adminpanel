@@ -1,3 +1,4 @@
+import toast from "react-hot-toast";
 import { api } from "./api";
 
 export const getGames = async (page:number, size:number)=>
@@ -12,4 +13,7 @@ export const getGames = async (page:number, size:number)=>
 }
 export const createGame = async (metadata: any) => {
     return api.post("/api/games", metadata);
+};
+export const deleteGame = async (gameid: number) => {
+    return api.delete(`/api/games/${gameid}`);
 };

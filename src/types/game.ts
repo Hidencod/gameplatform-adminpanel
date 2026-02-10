@@ -9,4 +9,5 @@ export interface Game {
     playCount: number;
     averageRating: number;
     createdAt: string; // ISO date from backend
+    status:String;
 }

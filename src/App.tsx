@@ -10,6 +10,7 @@ import DashBoard from "./pages/DashBoard";
 import Users from "./pages/Users";
 import Games from "./pages/Games";
 import GameUpload from "./pages/GameUpload";
+import { Toaster } from "react-hot-toast";
 function NavigatorSetup()
 {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login/>}/>
       <Route element={<PrivateRoute role="ROLE_ADMIN"/>}>
+          
           <Route path="/dashboard" element={<DashBoardLayout />}>
             <Route index element={<DashBoard />}></Route>
             <Route path="/dashboard/users" element={<Users/>}></Route>
