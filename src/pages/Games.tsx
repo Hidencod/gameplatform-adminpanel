@@ -100,7 +100,15 @@ export default function Games() {
             setGameToDelete(null);
         }
     };
-    
+    const handleEditGame = (game:any)=>
+    {
+        navigateTo('/dashboard/games/upload', {
+            state: {
+                gameId: game.id,
+                gameData: game  // Pass entire game object
+            }
+        })
+    }
 
 
     // Calculate stats from games data
@@ -372,6 +380,7 @@ export default function Games() {
                 onAdd={() => navigateTo("/dashboard/games/upload")}
                 onExport={() => exportGamesToExcel(games)}
                 onDelete={(game) => handleDeleteClick(game)}
+                onEditGame={(game)=>handleEditGame(game)}
             />
 
             {/* Pagination */}

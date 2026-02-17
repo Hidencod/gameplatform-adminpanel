@@ -15,10 +15,11 @@ interface ImprovedTableProps<T> {
     title?: string;
     onAdd?: () => void;
     onExport?: () => void;
+    onEditGame?:(row:T)=>void;
     onDelete?:(row:T) => void;
 }
 
-export default function Table<T>({ data, columns, gridCols, title, onAdd, onExport, onDelete }: ImprovedTableProps<T>) {
+export default function Table<T>({ data, columns, gridCols, title, onAdd, onExport, onEditGame, onDelete }: ImprovedTableProps<T>) {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
@@ -144,6 +145,7 @@ export default function Table<T>({ data, columns, gridCols, title, onAdd, onExpo
                                 <button
                                     className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-150"
                                     title="Edit"
+                                    onClick={()=>onEditGame?.(row)}
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

@@ -11,3 +11,9 @@ export interface Game {
     createdAt: string; // ISO date from backend
     status:String;
 }
+export interface GameStatusResponse {
+    id: number;
+    gameStatus: "DRAFT" | "UPLOADING" | "PROCESSING" | "PUBLISHED" | "FAILED";
+    gameUrl: string | null;
+    errorMessage: string | null;
+}

@@ -1,6 +1,7 @@
 import toast from "react-hot-toast";
 import { api } from "./api";
-
+import type { GameStatusResponse } from "../types/game";
+import type ZipInfo from "../types/zipInfo";
 export const getGames = async (page:number, size:number)=>
 {
     return await api.get("/api/games",
@@ -17,3 +18,11 @@ export const createGame = async (metadata: any) => {
 export const deleteGame = async (gameid: number) => {
     return api.delete(`/api/games/${gameid}`);
 };
+export const getGameStatus = async(gameId:number)=>
+{
+    return await api.get<GameStatusResponse>(`api/games/${gameId}/status`)
+}
+export const getGameZipStatus = async (gameId:number)=>
+{
+    return await api.get<ZipInfo>(`api/games/${gameId}/zip-status`)
+}

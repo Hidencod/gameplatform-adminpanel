@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Upload, FileText, Tag, Loader2, CheckCircle, XCircle, ArrowLeft, Sparkles, Zap, Package } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
-import { createGame } from "../services/gameService";
+import { createGame, getGameStatus, getGameZipStatus } from "../services/gameService";
 
 interface GameMetadata {
     name: string;
@@ -13,15 +13,11 @@ interface GameMetadata {
 
 type UploadStep = "metadata" | "upload" | "processing" | "complete" | "error";
 
-interface GameStatusResponse {
-    id: number;
-    gameStatus: "DRAFT" | "UPLOADING" | "PROCESSING" | "PUBLISHED" | "FAILED";
-    gameUrl: string | null;
-    errorMessage: string | null;
-}
+
 
 export default function GameUpload() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [step, setStep] = useState<UploadStep>("metadata");
     const [gameId, setGameId] = useState<number | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -29,7 +25,66 @@ export default function GameUpload() {
     const [processingStatus, setProcessingStatus] = useState("");
     const [gameUrl, setGameUrl] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const {gameData} = location.state ||{};
+    const [isEditing, setIsEditing] = useState(false);
+    const [existingZip, setExistingZip] = useState<{
+        fileName: string
+        size: number
+    } | null>(null);
+    useEffect(()=>
+    {
+        if(gameData)
+        {
+            setIsEditing(true);
+            console.log("Hello")
+            setMetadata({
+                name:gameData.name,
+                description: gameData.description,
+                category:gameData.category,
+                tags:gameData.tags
+            });
+            setGameId(gameData.id);
+            const checkExistingZip = async () => {
+                if (gameData.id) {
+                    console.log("Hello")
+                    const res = await getGameZipStatus(gameData.id);
+                    const data = await res.data;
+                    console.log(data);
+                    if (data.exists) {
+                        setExistingZip({
+                            fileName: data.fileName,
+                            size: data.fileSize,
+                        });
+                    }
+                };
 
+                
+            }
+            
+            checkExistingZip();
+        }
+    },[location.state])
+    // Function to handle step navigation
+    const canNavigateToStep = (targetStep: UploadStep): boolean => {
+        if (isEditing) {
+            // When editing, allow navigation to any step
+            return true;
+        }
+
+        // When creating new game, enforce sequential flow
+        const stepOrder = ["metadata", "upload", "processing", "complete"];
+        const currentIndex = stepOrder.indexOf(step);
+        const targetIndex = stepOrder.indexOf(targetStep);
+
+        // Only allow going to current or previous steps
+        return targetIndex <= currentIndex;
+    };
+
+    const goToStep = (targetStep: UploadStep) => {
+        if (canNavigateToStep(targetStep)) {
+            setStep(targetStep);
+        }
+    };
     // Metadata form
     const [metadata, setMetadata] = useState<GameMetadata>({
         name: "",
@@ -48,6 +103,11 @@ export default function GameUpload() {
         e.preventDefault();
 
         try {
+            if(isEditing && gameId)
+            {
+                setStep("upload");
+                return;
+            }
             const response = await createGame(metadata);
 
             const game = response.data;
@@ -116,13 +176,26 @@ export default function GameUpload() {
             setErrorMessage("Upload failed. Please try again.");
         }
     };
-
+    const handleProcessExistingZip = async()=>
+    {
+        if(!gameId) return;
+        try {
+            setStep("processing");
+            await api.post(`/api/games/${gameId}/upload/complete`);
+            startPollingStatus();
+        }        catch(error)        {
+            console.error("Error processing existing ZIP:", error);
+            setStep("error");
+            setErrorMessage("Failed to process existing ZIP. Please try again.");
+        }
+    }
 
     // Step 3: Poll for processing status
     const startPollingStatus = () => {
         const pollInterval = setInterval(async () => {
             try {
-                const { data: status } = await api.get<GameStatusResponse>(`api/games/${gameId}/status`);
+                if (gameId === null) return;
+                const { data: status } = await getGameStatus(gameId);
 
                 setProcessingStatus(status.gameStatus);
 
@@ -172,8 +245,8 @@ export default function GameUpload() {
                         <ArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-semibold text-gray-800">Upload Game</h1>
-                        <p className="text-sm text-gray-500">Share your game with the world</p>
+                        <h1 className="text-2xl font-semibold text-gray-800">{isEditing ?"Edit Game" : "Upload Game"}</h1>
+                        <p className="text-sm text-gray-500">{isEditing ? "Update your game details" :"Share your game with the world"}</p>
                     </div>
                 </div>
 
@@ -385,6 +458,38 @@ export default function GameUpload() {
                             </button>
                         </form>
                     )}
+                    {step === "upload" && existingZip && (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-4 shadow-sm">
+
+                            {/* ZIP info and button */}
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium text-gray-800">{existingZip.fileName}</p>
+                                    <p className="text-sm text-gray-500 flex items-center space-x-1">
+                                        <span>📦</span>
+                                        <span>Size: {(existingZip.size / 1024 / 1024).toFixed(2)} MB</span>
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={handleProcessExistingZip}
+                                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                                >
+                                    Process ZIP File
+                                </button>
+                            </div>
+
+                            {/* Message section */}
+                            <div className="flex items-start space-x-2 bg-green-100 p-3 rounded-md">
+                                <span className="text-green-500 text-lg mt-0.5">ℹ️</span>
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                    We found an existing ZIP file for this game. You can choose to process it or upload a new one.
+                                </p>
+                            </div>
+
+                        </div>
+                    )}
+
 
                     {/* Step 2: File Upload */}
                     {step === "upload" && (
@@ -421,12 +526,17 @@ export default function GameUpload() {
                             )}
 
                             <button
-                                onClick={handleFileUpload}
-                                disabled={!selectedFile || isUploading}
+                                onClick={
+                                         handleFileUpload
+                                }
+                                disabled={
+                                    (!selectedFile) || isUploading
+                                }
                                 className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-blue-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Upload Game
+                                {selectedFile ? "Upload Game" : "Select a ZIP file first"}
                             </button>
+
                         </div>
                     )}
 
