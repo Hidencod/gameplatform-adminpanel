@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Upload, FileText, Tag, Loader2, CheckCircle, XCircle, ArrowLeft, Sparkles, Zap, Package } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
-import { createGame, getGameStatus, getGameZipStatus } from "../services/gameService";
+import { createGame, getGameStatus, getGameZipStatus, updateGame } from "../services/gameService";
+import axios from "axios";
+import { toast, Toaster } from "react-hot-toast";
 
 interface GameMetadata {
     name: string;
@@ -25,28 +27,25 @@ export default function GameUpload() {
     const [processingStatus, setProcessingStatus] = useState("");
     const [gameUrl, setGameUrl] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const {gameData} = location.state ||{};
+    const { gameData } = location.state || {};
     const [isEditing, setIsEditing] = useState(false);
     const [existingZip, setExistingZip] = useState<{
         fileName: string
         size: number
     } | null>(null);
-    useEffect(()=>
-    {
-        if(gameData)
-        {
+    const isPublished = gameData?.status === "PUBLISHED";
+    useEffect(() => {
+        if (gameData) {
             setIsEditing(true);
-            console.log("Hello")
             setMetadata({
-                name:gameData.name,
+                name: gameData.name,
                 description: gameData.description,
-                category:gameData.category,
-                tags:gameData.tags
+                category: gameData.category,
+                tags: gameData.tags
             });
             setGameId(gameData.id);
             const checkExistingZip = async () => {
                 if (gameData.id) {
-                    console.log("Hello")
                     const res = await getGameZipStatus(gameData.id);
                     const data = await res.data;
                     console.log(data);
@@ -58,12 +57,12 @@ export default function GameUpload() {
                     }
                 };
 
-                
+
             }
-            
+
             checkExistingZip();
         }
-    },[location.state])
+    }, [location.state])
     // Function to handle step navigation
     const canNavigateToStep = (targetStep: UploadStep): boolean => {
         if (isEditing) {
@@ -97,17 +96,78 @@ export default function GameUpload() {
 
     // Categories
     const categories = ["Action", "Puzzle", "Adventure", "Strategy", "Sports", "Racing", "Casual"];
+    const handleUpdateGameMetadata = async () => {
 
+        if (gameId) {
+            try {
+
+                const response = await updateGame(gameId, metadata);
+
+                if (response.status === 200) {
+
+                    toast.success(
+                        (t) => (
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-gray-800">Game Updated!</p>
+                                    <p className="text-sm text-gray-600">Game details updated successfully</p>
+                                </div>
+                            </div>
+                        ),
+                        {
+                            duration: 3000,
+                            style: {
+                                background: '#fff',
+                                padding: '16px',
+                                borderRadius: '12px',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                            },
+                        }
+                    );
+                } else {
+                    console.error("Unexpected status code:", response.status);
+                }
+            } catch (error: any) {
+                if (axios.isAxiosError(error)) {
+                    const message = error.response?.data?.message || error.message || "Something went wrong";
+                    toast.error(message, {
+                        duration: 4000,
+                        style: {
+                            background: '#fff',
+                            padding: '16px',
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                        },
+                    });
+                } else {
+                    toast.error("An unexpected error occurred", {
+                        duration: 4000,
+                        style: {
+                            background: '#fff',
+                            padding: '16px',
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                        },
+                    });
+                }
+            }
+        }
+    }
     // Step 1: Submit metadata and create game
     const handleMetadataSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
+        if(isEditing && gameId)
+        {
+            setStep("upload");
+            return;
+        }
         try {
-            if(isEditing && gameId)
-            {
-                setStep("upload");
-                return;
-            }
+
             const response = await createGame(metadata);
 
             const game = response.data;
@@ -123,7 +183,7 @@ export default function GameUpload() {
     // Step 2: Upload file to R2
     const handleFileUpload = async () => {
         if (!selectedFile || !gameId) return;
-
+        
         // Show immediate feedback
         setIsUploading(true);
         setUploadProgress(1);
@@ -132,7 +192,7 @@ export default function GameUpload() {
             // 1. Get presigned URL (axios + auth)
             const { data } = await api.post(`/api/games/${gameId}/upload`);
             const { uploadUrl } = data;
-
+            console.log("Presigned URL:", uploadUrl);
             // 2. Upload file directly to R2 (raw PUT)
             const xhr = new XMLHttpRequest();
 
@@ -176,14 +236,13 @@ export default function GameUpload() {
             setErrorMessage("Upload failed. Please try again.");
         }
     };
-    const handleProcessExistingZip = async()=>
-    {
-        if(!gameId) return;
+    const handleProcessExistingZip = async () => {
+        if (!gameId) return;
         try {
             setStep("processing");
             await api.post(`/api/games/${gameId}/upload/complete`);
             startPollingStatus();
-        }        catch(error)        {
+        } catch (error) {
             console.error("Error processing existing ZIP:", error);
             setStep("error");
             setErrorMessage("Failed to process existing ZIP. Please try again.");
@@ -234,7 +293,9 @@ export default function GameUpload() {
     };
 
     return (
+
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 p-8">
+            <Toaster position="top-right" />
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
@@ -245,8 +306,8 @@ export default function GameUpload() {
                         <ArrowLeft className="w-5 h-5 text-gray-600" />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-semibold text-gray-800">{isEditing ?"Edit Game" : "Upload Game"}</h1>
-                        <p className="text-sm text-gray-500">{isEditing ? "Update your game details" :"Share your game with the world"}</p>
+                        <h1 className="text-2xl font-semibold text-gray-800">{isEditing ? "Edit Game" : "Upload Game"}</h1>
+                        <p className="text-sm text-gray-500">{isEditing ? "Update your game details" : "Share your game with the world"}</p>
                     </div>
                 </div>
 
@@ -450,12 +511,25 @@ export default function GameUpload() {
                                 </div>
                             </div>
 
-                            <button
-                                type="submit"
-                                className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-blue-600 transition-all shadow-sm hover:shadow-md"
-                            >
-                                Continue to Upload
-                            </button>
+                            <div className="flex flex-col gap-3">
+                                {isEditing && <button
+                                    type="button"
+                                    onClick={handleUpdateGameMetadata}
+                                    className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-blue-600 transition-all shadow-sm hover:shadow-md"
+                                >
+                                    Update Game Details
+                                </button>
+                                }
+
+                                <button
+                                    type="submit"
+                                    className="w-full py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-shadow"
+                                >
+                                    Continue to Upload
+                                </button>
+
+                            </div>
+
                         </form>
                     )}
                     {step === "upload" && existingZip && (
@@ -527,7 +601,7 @@ export default function GameUpload() {
 
                             <button
                                 onClick={
-                                         handleFileUpload
+                                    handleFileUpload
                                 }
                                 disabled={
                                     (!selectedFile) || isUploading

@@ -15,6 +15,10 @@ export const getGames = async (page:number, size:number)=>
 export const createGame = async (metadata: any) => {
     return api.post("/api/games", metadata);
 };
+export const updateGame = async(gameId:number, metadata:any)=>
+{
+    return api.put(`/api/games/${gameId}/update`,metadata);
+}
 export const deleteGame = async (gameid: number) => {
     return api.delete(`/api/games/${gameid}`);
 };
