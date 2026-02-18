@@ -2,12 +2,12 @@ import toast from "react-hot-toast";
 import { api } from "./api";
 import type { GameStatusResponse } from "../types/game";
 import type ZipInfo from "../types/zipInfo";
-export const getGames = async (page:number, size:number)=>
+export const getGames = async (page:number, size:number, search?:string)=>
 {
     return await api.get("/api/games",
         {
             params:{
-                page, size
+                page, size, search
             }
         }
     );

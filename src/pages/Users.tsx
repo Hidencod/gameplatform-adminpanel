@@ -11,13 +11,24 @@ export default function Users() {
     const [params, setParams] = useSearchParams();
     const page = Number(params.get("page")) || 0;
     const [totalPages, setTotalPages] = useState(1);
+    const [search,setSearch] = useState("");
+    const [debouncedSearch,setDebouncedSearch] = useState("");
+
+
+    useEffect(()=>
+    {
+        const timer = setTimeout(()=>{
+            setDebouncedSearch(search);
+        },400);
+        return()=>clearTimeout(timer);
+    })
 
     useEffect(() => {
-        getUsers(page, 10).then((res) => {
+        getUsers(page, 10, debouncedSearch).then((res) => {
             setUsers(res.data.content);
             setTotalPages(res.data.totalPages);
         });
-    }, [page]);
+    }, [page, debouncedSearch]);
 
     const userColumns: Columns<User>[] = [
         {
@@ -135,6 +146,8 @@ export default function Users() {
                 title="All Users"
                 onAdd={() => console.log("Add user")}
                 onExport={() => console.log("Export users")}
+                onSearchTerm={search}
+                onSearchTermChange={(term) => setSearch(term)}
             />
 
             {/* Pagination */}

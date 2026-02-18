@@ -18,15 +18,26 @@ export default function Games() {
     const [totalGames, setTotalGames] = useState(0);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [gameToDelete, setGameToDelete] = useState<Game | null>(null);
+    const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
 
     useEffect(() => {
-        getGames(page, 10).then((res) => {
-            console.log(res)
+        const handler = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [search]);
+
+    useEffect(() => {
+        getGames(page, 10, debouncedSearch).then((res) => {
             setGames(res.data.content);
             setTotalPages(res.data.totalPages);
             setTotalGames(res.data.totalElements);
         });
-    }, [page]);
+    }, [page, debouncedSearch]);
 
     const handleDeleteClick = (game: Game) => {
         setGameToDelete(game);
@@ -381,6 +392,8 @@ export default function Games() {
                 onExport={() => exportGamesToExcel(games)}
                 onDelete={(game) => handleDeleteClick(game)}
                 onEditGame={(game)=>handleEditGame(game)}
+                onSearchTerm={search}
+                onSearchTermChange={(term) => setSearch(term)}
             />
 
             {/* Pagination */}

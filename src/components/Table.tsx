@@ -17,10 +17,12 @@ interface ImprovedTableProps<T> {
     onExport?: () => void;
     onEditGame?:(row:T)=>void;
     onDelete?:(row:T) => void;
+    onSearchTerm: string;
+    onSearchTermChange: (term: string) => void;
 }
 
-export default function Table<T>({ data, columns, gridCols, title, onAdd, onExport, onEditGame, onDelete }: ImprovedTableProps<T>) {
-    const [searchTerm, setSearchTerm] = useState("");
+export default function Table<T>({ data, columns, gridCols, title, onAdd, onExport, onEditGame, onDelete, onSearchTerm, onSearchTermChange }: ImprovedTableProps<T>) {
+    const [searchTerm, setSearchTerm] = useState(onSearchTerm);
     const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
     const toggleRow = (index: number) => {
@@ -67,8 +69,11 @@ export default function Table<T>({ data, columns, gridCols, title, onAdd, onExpo
                         type="text"
                         placeholder="Search..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            onSearchTermChange(e.target.value);
+                        }}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border text-blue-400 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
                     />
                 </div>
                 <button className="flex items-center gap-2 px-4 py-2.5 text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
