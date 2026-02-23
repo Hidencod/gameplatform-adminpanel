@@ -12,6 +12,10 @@ export const getGames = async (page:number, size:number, search?:string)=>
         }
     );
 }
+export const getGameById = async (gameId:number)=>
+{
+    return await api.get(`/api/games/${gameId}`);
+}
 export const createGame = async (metadata: any) => {
     return api.post("/api/games", metadata);
 };

@@ -19,9 +19,10 @@ interface ImprovedTableProps<T> {
     onDelete?:(row:T) => void;
     onSearchTerm: string;
     onSearchTermChange: (term: string) => void;
+    filterComponent?: React.ReactNode;
 }
 
-export default function Table<T>({ data, columns, gridCols, title, onAdd, onExport, onEditGame, onDelete, onSearchTerm, onSearchTermChange }: ImprovedTableProps<T>) {
+export default function Table<T>({ data, columns, gridCols, title, onAdd, onExport, onEditGame, onDelete, onSearchTerm, onSearchTermChange, filterComponent }: ImprovedTableProps<T>) {
     const [searchTerm, setSearchTerm] = useState(onSearchTerm);
     const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
@@ -51,13 +52,15 @@ export default function Table<T>({ data, columns, gridCols, title, onAdd, onExpo
                         <Download size={16} />
                         <span className="text-sm font-medium">Export</span>
                     </button>
-                    <button
-                        onClick={onAdd}
-                        className="flex items-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl hover:from-purple-600 hover:to-blue-600 shadow-sm hover:shadow-md transition-all"
-                    >
-                        <Plus size={16} />
-                        <span className="text-sm font-medium">Add New</span>
-                    </button>
+                    {onAdd && (
+                        <button
+                            onClick={onAdd}
+                            className="flex items-center gap-2 px-4 py-2 text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl hover:from-purple-600 hover:to-blue-600 shadow-sm hover:shadow-md transition-all"
+                        >
+                            <Plus size={16} />
+                            <span className="text-sm font-medium">Add New</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -76,10 +79,7 @@ export default function Table<T>({ data, columns, gridCols, title, onAdd, onExpo
                         className="w-full pl-10 pr-4 py-2.5 bg-white border text-blue-400 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all"
                     />
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2.5 text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                    <Filter size={16} />
-                    <span className="text-sm font-medium">Filters</span>
-                </button>
+                {filterComponent}
             </div>
 
             {/* Bulk Actions */}

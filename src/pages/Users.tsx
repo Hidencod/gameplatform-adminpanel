@@ -1,19 +1,23 @@
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { getUsers } from "../services/userService";
 import type { User } from "../types/user";
 import Pagination from "../components/Pagination";
 import { useSearchParams } from "react-router-dom";
 import type { Columns } from "../components/Table";
 import ImprovedTable from "../components/Table";
+import { exportUsersToExcel } from "../utils/xlsx";
+import { Filter } from "lucide-react";
+import Filters from "../components/Filters";
 
 export default function Users() {
     const [users, setUsers] = useState<User[]>([]);
     const [params, setParams] = useSearchParams();
     const page = Number(params.get("page")) || 0;
     const [totalPages, setTotalPages] = useState(1);
+    const [totalUsers, setTotalUsers] = useState(0);
     const [search,setSearch] = useState("");
     const [debouncedSearch,setDebouncedSearch] = useState("");
-
+    const [filters, setFilters] = useState<Record<string, any>>({ role: "", active: "" });
 
     useEffect(()=>
     {
@@ -24,12 +28,22 @@ export default function Users() {
     })
 
     useEffect(() => {
-        getUsers(page, 10, debouncedSearch).then((res) => {
+        getUsers(page, 10, debouncedSearch, filters).then((res) => {
+           
             setUsers(res.data.content);
             setTotalPages(res.data.totalPages);
+            setTotalUsers(res.data.totalElements);
         });
-    }, [page, debouncedSearch]);
-
+    }, [page,filters, debouncedSearch]);
+    const userFilterOptions = [
+        {
+            key: "role", label: "Role", type: "select", options: [
+                { label: "Admin", value: "ROLE_ADMIN" },
+                { label: "User", value: "ROLE_USER" },
+            ]
+        },
+        { key: "active", label: "Active", type: "checkbox" }
+    ];
     const userColumns: Columns<User>[] = [
         {
             key: "user",
@@ -41,7 +55,7 @@ export default function Users() {
                     </div>
                     <div>
                         <p className="font-medium text-gray-700">{user.username}</p>
-                        <p className="text-xs text-gray-500">test@gmail.com</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
                 </div>
             )
@@ -61,18 +75,18 @@ export default function Users() {
         {
             key: "status",
             header: "Status",
-            render: () => (
+            render: (user) => (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    Active
+                    {user.active ? "Active" : "Inactive"}
                 </span>
             )
         },
         {
             key: "joined",
             header: "Joined",
-            render: () => (
-                <span className="text-sm text-gray-600">Jan 15, 2024</span>
+            render: (user) => (
+                <span className="text-sm text-gray-600">{user.createdAt}</span>
             )
         }
     ];
@@ -92,7 +106,7 @@ export default function Users() {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Users</p>
-                            <p className="text-2xl font-bold text-gray-800">2,543</p>
+                            <p className="text-2xl font-bold text-gray-800">{totalUsers}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-1 text-xs">
@@ -137,17 +151,19 @@ export default function Users() {
                     </div>
                 </div>
             </div>
-
+            
             {/* Users Table */}
             <ImprovedTable
                 data={users}
                 columns={userColumns}
                 gridCols={gridCols}
                 title="All Users"
-                onAdd={() => console.log("Add user")}
-                onExport={() => console.log("Export users")}
+                onExport={() => exportUsersToExcel(users)}
                 onSearchTerm={search}
                 onSearchTermChange={(term) => setSearch(term)}
+                filterComponent={<Filters filters={filters} setFilters={setFilters} filterOptions={userFilterOptions} />
+                }
+
             />
 
             {/* Pagination */}

@@ -1,6 +1,7 @@
 import type { Game } from "../types/game";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import type { User } from "../types/user";
 
 
 export function exportGamesToExcel(games: Game[]) {
@@ -27,4 +28,27 @@ export function exportGamesToExcel(games: Game[]) {
     // Save file
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
     saveAs(blob, "games.xlsx");
+}
+export function exportUsersToExcel(users: User[]) {
+    const data = users.map(user => ({
+        ID: user.id,
+        Username: user.username,
+        Role: user.role,
+        Status: user.active ? "Active" : "Inactive",
+        "Created At": new Date(user.createdAt).toLocaleDateString(),
+    }));
+    
+    // Create a worksheet
+    const worksheet = XLSX.utils.json_to_sheet(data);
+
+    // Create a workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
+
+    // Generate Excel file buffer
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+
+    // Save file
+    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(blob, "users.xlsx");
 }

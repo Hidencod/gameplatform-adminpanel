@@ -1,19 +1,41 @@
 import { FaCheckCircle, FaPen, FaTimesCircle, FaUsers, FaGamepad, FaTrophy } from "react-icons/fa";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getUsers } from "../services/userService";
+import type { User } from "../types/user";
+import { getGames } from "../services/gameService";
+import type { Game } from "../types/game";
 
 export default function Dashboard() {
+    const [totalUsers, setTotalUsers] = useState<number>(0);
+    const [totalGames, setTotalGames] = useState(0);
+    const [games, setGames] = useState<Game[]>([]);
+    const publisedGames = games.filter(game=>game.status==="PUBLISHED").length;
+    const draftGames = games.filter(game=>game.status==="DRAFT").length;
+    const failedGames = games.filter(game=>game.status==="FAILED").length;
+    useEffect(()=>
+    {
+        getUsers(0, 10, "").then((res) => {
+            setTotalUsers(res.data.totalElements);
+                });
+        getGames(0, 10, "").then((res) => {
+            setGames(res.data.content);
+            setTotalGames(res.data.totalElements);
+                });
+            
+    },[])
     const stats = [
         {
             title: "Total Users",
-            value: "2,543",
+            value: totalUsers,
             change: "+12.5%",
             trend: "up",
             icon: <FaUsers className="text-2xl" />,
             color: "from-blue-400 to-blue-600",
         },
         {
-            title: "Active Games",
-            value: "127",
+            title: "Total Games",
+            value: totalGames,
             change: "+8.2%",
             trend: "up",
             icon: <FaGamepad className="text-2xl" />,
@@ -36,11 +58,12 @@ export default function Dashboard() {
             color: "from-amber-400 to-amber-600",
         },
     ];
+    
 
     const gameStatuses = [
-        { title: "Published", count: 87, color: "bg-emerald-500", percentage: 68 },
-        { title: "Draft", count: 28, color: "bg-amber-500", percentage: 22 },
-        { title: "Failed", count: 12, color: "bg-rose-500", percentage: 10 },
+        { title: "Published", count: publisedGames, color: "bg-emerald-500", percentage: totalGames>0? Math.round((publisedGames / totalGames) * 100):0 },
+        { title: "Draft", count: draftGames, color: "bg-amber-500", percentage: totalGames>0? Math.round((draftGames / totalGames) * 100):0 },
+        { title: "Failed", count: failedGames, color: "bg-rose-500", percentage: totalGames>0? Math.round((failedGames / totalGames) * 100):0 },
     ];
 
     const recentActivity = [

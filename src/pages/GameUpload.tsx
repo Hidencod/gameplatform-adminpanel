@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Upload, FileText, Tag, Loader2, CheckCircle, XCircle, ArrowLeft, Sparkles, Zap, Package } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
-import { createGame, getGameStatus, getGameZipStatus, updateGame } from "../services/gameService";
+import { createGame, getGameById, getGameStatus, getGameZipStatus, updateGame } from "../services/gameService";
 import axios from "axios";
 import { toast, Toaster } from "react-hot-toast";
 
@@ -728,6 +728,21 @@ export default function GameUpload() {
                             <p className="text-gray-600 mb-6">{errorMessage}</p>
                             <button
                                 onClick={() => {
+                                    getGameById(gameId!).then((res) => {
+                                        const game = res.data;
+                                        if(game)
+                                        {
+                                            setMetadata({
+                                                name: game.name,
+                                                description: game.description,
+                                                category: game.category,
+                                                tags: game.tags || []
+                                            });
+                                            setIsEditing(true);
+                                        }else{
+                                            setIsEditing(false);
+                                        }
+                                    });
                                     setStep("metadata");
                                     setErrorMessage(null);
                                     setUploadProgress(0);

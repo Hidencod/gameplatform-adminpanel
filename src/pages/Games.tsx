@@ -52,7 +52,7 @@ export default function Games() {
 
         try {
             const resp = await deleteGame(gameToDelete.id);
-            console.log(resp);
+           
 
             // Success toast with custom styling
             toast.success(
