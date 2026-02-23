@@ -25,16 +25,20 @@ export default function Users() {
             setDebouncedSearch(search);
         },400);
         return()=>clearTimeout(timer);
-    })
+    },[search]);
 
     useEffect(() => {
-        getUsers(page, 10, debouncedSearch, filters).then((res) => {
-           
+        // Strip out empty strings and false values before sending to API
+        const activeFilters = Object.fromEntries(
+            Object.entries(filters).filter(([_, v]) => v !== "" && v !== false && v !== undefined)
+        );
+
+        getUsers(page, 10, debouncedSearch, activeFilters).then((res) => {
             setUsers(res.data.content);
             setTotalPages(res.data.totalPages);
             setTotalUsers(res.data.totalElements);
         });
-    }, [page,filters, debouncedSearch]);
+    }, [page, filters, debouncedSearch]);
     const userFilterOptions = [
         {
             key: "role", label: "Role", type: "select", options: [

@@ -2,16 +2,23 @@ import toast from "react-hot-toast";
 import { api } from "./api";
 import type { GameStatusResponse } from "../types/game";
 import type ZipInfo from "../types/zipInfo";
-export const getGames = async (page:number, size:number, search?:string)=>
-{
-    return await api.get("/api/games",
-        {
-            params:{
-                page, size, search
-            }
+export const getGames = async (
+    page: number,
+    size: number,
+    search?: string,
+    filters?: Record<string, any>
+) => {
+    return await api.get("/api/games", {
+        params: {
+            page,
+            size,
+            search: search || "",
+            category: filters?.category || "",
+            tags: filters?.tags || "",
+            status: filters?.status || "PUBLISHED"
         }
-    );
-}
+    });
+};
 export const getGameById = async (gameId:number)=>
 {
     return await api.get(`/api/games/${gameId}`);

@@ -9,7 +9,12 @@ import { Star, TrendingUp, Users, Gamepad2, Trash2 } from "lucide-react";
 import { navigateTo } from "../utils/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { exportGamesToExcel } from "../utils/xlsx";
-
+import Filters from "../components/Filters";
+type GameFilters = {
+    category?: "ACTION" | "ADVENTURE" | "STRATEGY";
+    tags?: string;
+    status?: "DRAFT" | "UPLOADING" | "PROCESSING" | "PUBLISHED" | "FAILED";
+};
 export default function Games() {
     const [games, setGames] = useState<Game[]>([]);
     const [params, setParams] = useSearchParams();
@@ -20,7 +25,10 @@ export default function Games() {
     const [gameToDelete, setGameToDelete] = useState<Game | null>(null);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-
+    //show filters for category, status, etc
+    const [filters, setFilters] = useState<GameFilters>({});
+    const [tags, setTags] = useState("");           // immediate value from input
+    const [debouncedTags, setDebouncedTags] = useState(""); // debounced value used in API
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearch(search);
@@ -30,21 +38,56 @@ export default function Games() {
             clearTimeout(handler);
         };
     }, [search]);
-
     useEffect(() => {
-        getGames(page, 10, debouncedSearch).then((res) => {
+        const handler = setTimeout(() => {
+            setDebouncedTags(tags);
+        }, 500); // wait 300ms after typing stops
+
+        return () => clearTimeout(handler);
+    }, [tags]);
+    useEffect(() => {
+        const activeFilters = Object.fromEntries(
+            Object.entries(filters).filter(([key, value]) => value !== "" && value !== undefined)
+        );
+
+        // Include debounced tags
+        if (debouncedTags) activeFilters.tags = debouncedTags;
+
+        // Use debouncedSearch here
+        getGames(page, 10, debouncedSearch, activeFilters).then((res) => {
             setGames(res.data.content);
             setTotalPages(res.data.totalPages);
             setTotalGames(res.data.totalElements);
         });
-    }, [page, debouncedSearch]);
 
+        console.log("Fetching games with filters:", activeFilters, "Search:", debouncedSearch);
+    }, [page, debouncedTags, filters, debouncedSearch]);
     const handleDeleteClick = (game: Game) => {
         setGameToDelete(game);
         setShowDeleteModal(true);
     };
 
+    const gameFilterOptions = [
 
+        {
+            key: "category", label: "Category", type: "select", options: [
+                { label: "Action", value: "ACTION" },
+                { label: "Adventure", value: "ADVENTURE" },
+                { label: "Strategy", value: "STRATEGY" },
+            ]
+        },
+        {
+            key:"tags", label:"Tags", type:"text"
+        }
+    ,
+        { key: "status", label: "Status", type: "select", options: [
+            { label: "Draft", value: "DRAFT" },
+            { label: "Uploading", value: "UPLOADING" },
+            { label: "Processing", value: "PROCESSING" },
+            { label: "Published", value: "PUBLISHED" },
+            { label: "Failed", value: "FAILED" },
+        ] }
+    ];
     const handleDeleteConfirm = async () => {
         if (!gameToDelete) return;
 
@@ -394,6 +437,7 @@ export default function Games() {
                 onEditGame={(game)=>handleEditGame(game)}
                 onSearchTerm={search}
                 onSearchTermChange={(term) => setSearch(term)}
+                filterComponent={<Filters filters={filters} setFilters={setFilters} filterOptions={gameFilterOptions} />}
             />
 
             {/* Pagination */}
