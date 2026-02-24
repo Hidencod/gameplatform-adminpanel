@@ -1,5 +1,5 @@
 import { use, useEffect, useState } from "react";
-import { deleteUserById, getUsers } from "../services/userService";
+import { deleteUserById, getUsers, updateUser } from "../services/userService";
 import type { User } from "../types/user";
 import Pagination from "../components/Pagination";
 import { useSearchParams } from "react-router-dom";
@@ -17,32 +17,35 @@ export default function Users() {
     const page = Number(params.get("page")) || 0;
     const [totalPages, setTotalPages] = useState(1);
     const [totalUsers, setTotalUsers] = useState(0);
-    const [search,setSearch] = useState("");
-    const [debouncedSearch,setDebouncedSearch] = useState("");
+    const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [filters, setFilters] = useState<Record<string, any>>({ role: "", active: "" });
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
-
-    useEffect(()=>
-    {
-        const timer = setTimeout(()=>{
-            setDebouncedSearch(search);
-        },400);
-        return()=>clearTimeout(timer);
-    },[search]);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [userToEdit, setUserToEdit] = useState<User | null>(null);
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [page, filters, debouncedSearch]);
+    const fetchUsers = () => {
         // Strip out empty strings and false values before sending to API
         const activeFilters = Object.fromEntries(
             Object.entries(filters).filter(([_, v]) => v !== "" && v !== false && v !== undefined)
         );
-
         getUsers(page, 10, debouncedSearch, activeFilters).then((res) => {
             setUsers(res.data.content);
             setTotalPages(res.data.totalPages);
             setTotalUsers(res.data.totalElements);
         });
-    }, [page, filters, debouncedSearch]);
+    };
     const userFilterOptions = [
         {
             key: "role", label: "Role", type: "select", options: [
@@ -73,8 +76,8 @@ export default function Users() {
             header: "Role",
             render: (user) => (
                 <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-medium ${user.role === 'ADMIN'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-emerald-100 text-emerald-700'
+                    ? 'bg-purple-100 text-purple-700'
+                    : 'bg-emerald-100 text-emerald-700'
                     }`}>
                     {user.role}
                 </span>
@@ -98,12 +101,68 @@ export default function Users() {
             )
         }
     ];
-    const handleDeleteUser = (id:number)=>
-    {
-        const user = users.find(user=>user.id==id);
-        if(user)
+    const handleEditUser = (user: User) => {
+        setUserToEdit(user);
+        setShowEditModal(true);
+    }
+    const handleEditConfirm = async (updatedUser: User) => {
+        if (!userToEdit) return;
+
+        try {
+            const resp = await updateUser(userToEdit.id, {
+                role: updatedUser.role,
+                active: updatedUser.active
+            });
+            setShowEditModal(false);
+            //show success toast
+            toast.success(
+                (t) => (
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <svg
+                                className="w-5 h-5 text-emerald-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 13l4 4L19 7"
+                                />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="font-semibold text-gray-800">User updated!</p>
+                            <p className="text-sm text-gray-600">
+                                {userToEdit.username} has been updated
+                            </p>
+                        </div>
+                    </div>
+                ),
+                {
+                    duration: 3000,
+                    icon: null, // 👈 ADD THIS
+                    style: {
+                        background: "#fff",
+                        padding: "16px",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                    },
+                }
+            );
+            fetchUsers();
+        } catch (error) {
+            toast.error("Failed to update user");
+
+        }
+    }
+    const handleDeleteUser = (id: number) => {
+        const user = users.find(user => user.id == id);
+        if (user)
             setUserToDelete(user);
-            setShowDeleteModal(true);
+        setShowDeleteModal(true);
 
     }
     const handleDeleteConfirm = async () => {
@@ -144,7 +203,7 @@ export default function Users() {
                 ),
                 {
                     duration: 3000,
-                    icon: false, // 👈 ADD THIS
+                    icon: null, // 👈 ADD THIS
                     style: {
                         background: "#fff",
                         padding: "16px",
@@ -190,6 +249,54 @@ export default function Users() {
     return (
         <div className="space-y-6">
             <Toaster position="top-right" />
+            {/* edit user modal */}
+            {showEditModal && userToEdit && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in duration-300">
+                        <h3 className="text-2xl font-bold text-gray-800 mb-6">Edit User</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                <select
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    value={userToEdit.role}
+                                    onChange={(e) => setUserToEdit({ ...userToEdit, role: e.target.value })}
+                                >
+                                    <option value="ROLE_USER">User</option>
+                                    <option value="ROLE_ADMIN">Admin</option>
+                                </select>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <label className="text-sm font-medium text-gray-700">Active</label>
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                                    checked={userToEdit.active}
+                                    onChange={(e) => setUserToEdit({ ...userToEdit, active: e.target.checked })}
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowEditModal(false);
+                                    setUserToEdit(null);
+                                }}
+                                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleEditConfirm(userToEdit)}
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm hover:shadow-md"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Delete Confirmation Modal */}
             {showDeleteModal && userToDelete && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
@@ -291,15 +398,16 @@ export default function Users() {
                     </div>
                 </div>
             </div>
-            
+
             {/* Users Table */}
             <ImprovedTable
                 data={users}
                 columns={userColumns}
                 gridCols={gridCols}
                 title="All Users"
-                onDelete={(user)=>handleDeleteUser(user.id)}
+                onDelete={(user) => handleDeleteUser(user.id)}
                 onExport={() => exportUsersToExcel(users)}
+                onEdit={(user) => handleEditUser(user)}
                 onSearchTerm={search}
                 onSearchTermChange={(term) => setSearch(term)}
                 filterComponent={<Filters filters={filters} setFilters={setFilters} filterOptions={userFilterOptions} />

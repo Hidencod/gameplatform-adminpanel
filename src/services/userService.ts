@@ -21,3 +21,6 @@ export const getUsers = async (
 };
 export const getUserById=(id:string)=>api.get(`/admin/users/${id}`);
 export const deleteUserById = async(id:number)=>{ return await api.delete(`/admin/users/${id}`)};
+export const updateUser = async (id:number, data: Partial<{role:string,active:boolean}>) => {
+    return await api.put(`/admin/users/${id}`, data);
+}

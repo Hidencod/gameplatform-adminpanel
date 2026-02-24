@@ -77,7 +77,7 @@ export default function DashboardLayout() {
             {/* Main Content */}
             <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
                 {/* Top Bar */}
-                <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-10">
+                {/* <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-10">
                     <div className="flex items-center gap-4 flex-1 max-w-2xl">
                         <div className="relative flex-1">
                             <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -98,7 +98,7 @@ export default function DashboardLayout() {
                             A
                         </div>
                     </div>
-                </header>
+                </header> */}
 
                 {/* Page Content */}
                 <main className="p-8">

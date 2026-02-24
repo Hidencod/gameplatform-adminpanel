@@ -437,7 +437,7 @@ export default function Games() {
                 onAdd={() => navigateTo("/dashboard/games/upload")}
                 onExport={() => exportGamesToExcel(games)}
                 onDelete={(game) => handleDeleteClick(game)}
-                onEditGame={(game)=>handleEditGame(game)}
+                onEdit={(game)=>handleEditGame(game)}
                 onSearchTerm={search}
                 onSearchTermChange={(term) => setSearch(term)}
                 filterComponent={<Filters filters={filters} setFilters={setFilters} filterOptions={gameFilterOptions} />}

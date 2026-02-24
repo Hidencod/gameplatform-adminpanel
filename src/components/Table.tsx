@@ -15,14 +15,14 @@ interface ImprovedTableProps<T> {
     title?: string;
     onAdd?: () => void;
     onExport?: () => void;
-    onEditGame?:(row:T)=>void;
+    onEdit?:(row:T)=>void;
     onDelete?:(row:T) => void;
     onSearchTerm: string;
     onSearchTermChange: (term: string) => void;
     filterComponent?: React.ReactNode;
 }
 
-export default function Table<T>({ data, columns, gridCols, title, onAdd, onExport, onEditGame, onDelete, onSearchTerm, onSearchTermChange, filterComponent }: ImprovedTableProps<T>) {
+export default function Table<T>({ data, columns, gridCols, title, onAdd, onExport, onEdit: onEditGame, onDelete, onSearchTerm, onSearchTermChange, filterComponent }: ImprovedTableProps<T>) {
     const [searchTerm, setSearchTerm] = useState(onSearchTerm);
     const [selectedRows, setSelectedRows] = useState<number[]>([]);
 
