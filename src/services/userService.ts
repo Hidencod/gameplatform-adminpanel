@@ -20,3 +20,4 @@ export const getUsers = async (
     });
 };
 export const getUserById=(id:string)=>api.get(`/admin/users/${id}`);
+export const deleteUserById = async(id:number)=>{ return await api.delete(`/admin/users/${id}`)};

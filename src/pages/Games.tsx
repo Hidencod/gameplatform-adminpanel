@@ -46,22 +46,22 @@ export default function Games() {
         return () => clearTimeout(handler);
     }, [tags]);
     useEffect(() => {
+        fetchGames();
+    }, [page, debouncedTags, filters, debouncedSearch]);
+    const fetchGames = () => {
         const activeFilters = Object.fromEntries(
             Object.entries(filters).filter(([key, value]) => value !== "" && value !== undefined)
         );
 
         // Include debounced tags
         if (debouncedTags) activeFilters.tags = debouncedTags;
-
-        // Use debouncedSearch here
-        getGames(page, 10, debouncedSearch, activeFilters).then((res) => {
-            setGames(res.data.content);
-            setTotalPages(res.data.totalPages);
-            setTotalGames(res.data.totalElements);
-        });
-
-        console.log("Fetching games with filters:", activeFilters, "Search:", debouncedSearch);
-    }, [page, debouncedTags, filters, debouncedSearch]);
+        return getGames(page, 10, debouncedSearch, activeFilters)
+            .then(res => {
+                setGames(res.data.content);
+                setTotalPages(res.data.totalPages);
+                setTotalGames(res.data.totalElements);
+            });
+    };
     const handleDeleteClick = (game: Game) => {
         setGameToDelete(game);
         setShowDeleteModal(true);
@@ -114,6 +114,7 @@ export default function Games() {
                 ),
                 {
                     duration: 3000,
+                    icon: null,
                     style: {
                         background: '#fff',
                         padding: '16px',
@@ -124,6 +125,7 @@ export default function Games() {
             );
 
             setGames(prev => prev.filter(g => g.id !== gameToDelete.id));
+            fetchGames(); // Refresh the list after deletion
         } catch (error) {
             // Error toast
             toast.error(
@@ -142,6 +144,7 @@ export default function Games() {
                 ),
                 {
                     duration: 3000,
+                    icon: false, // Hide default icon
                     style: {
                         background: '#fff',
                         padding: '16px',
@@ -404,7 +407,7 @@ export default function Games() {
             </div>
 
             {/* Category Filter Pills */}
-            <div className="flex items-center gap-3 overflow-x-auto pb-2">
+            {/* <div className="flex items-center gap-3 overflow-x-auto pb-2">
                 <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 text-white font-medium text-sm whitespace-nowrap shadow-sm">
                     All Games
                 </button>
@@ -423,7 +426,7 @@ export default function Games() {
                 <button className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 font-medium text-sm whitespace-nowrap transition-colors">
                     Sports
                 </button>
-            </div>
+            </div> */}
 
             {/* Games Table */}
             <ImprovedTable

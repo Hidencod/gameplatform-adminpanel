@@ -1,13 +1,15 @@
 import { use, useEffect, useState } from "react";
-import { getUsers } from "../services/userService";
+import { deleteUserById, getUsers } from "../services/userService";
 import type { User } from "../types/user";
 import Pagination from "../components/Pagination";
 import { useSearchParams } from "react-router-dom";
 import type { Columns } from "../components/Table";
 import ImprovedTable from "../components/Table";
 import { exportUsersToExcel } from "../utils/xlsx";
-import { Filter } from "lucide-react";
+import { Filter, Trash2 } from "lucide-react";
 import Filters from "../components/Filters";
+import { toast } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 
 export default function Users() {
     const [users, setUsers] = useState<User[]>([]);
@@ -18,6 +20,8 @@ export default function Users() {
     const [search,setSearch] = useState("");
     const [debouncedSearch,setDebouncedSearch] = useState("");
     const [filters, setFilters] = useState<Record<string, any>>({ role: "", active: "" });
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
     useEffect(()=>
     {
@@ -94,11 +98,143 @@ export default function Users() {
             )
         }
     ];
+    const handleDeleteUser = (id:number)=>
+    {
+        const user = users.find(user=>user.id==id);
+        if(user)
+            setUserToDelete(user);
+            setShowDeleteModal(true);
 
+    }
+    const handleDeleteConfirm = async () => {
+        if (!userToDelete) return;
+
+        setShowDeleteModal(false);
+
+        try {
+            const resp = await deleteUserById(userToDelete.id);
+
+            console.log(resp);
+            // Success toast with custom styling
+            toast.success(
+                (t) => (
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <svg
+                                className="w-5 h-5 text-emerald-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 13l4 4L19 7"
+                                />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="font-semibold text-gray-800">User deleted!</p>
+                            <p className="text-sm text-gray-600">
+                                {userToDelete.username} has been removed
+                            </p>
+                        </div>
+                    </div>
+                ),
+                {
+                    duration: 3000,
+                    icon: false, // 👈 ADD THIS
+                    style: {
+                        background: "#fff",
+                        padding: "16px",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                    },
+                }
+            );
+
+            setUsers(prev => prev.filter(g => g.id !== userToDelete.id));
+        } catch (error) {
+            // Error toast
+            toast.error(
+                (t) => (
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="font-semibold text-gray-800">Delete Failed</p>
+                            <p className="text-sm text-gray-600">Could not delete the user</p>
+                        </div>
+                    </div>
+                ),
+                {
+                    duration: 3000,
+                    style: {
+                        background: '#fff',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    },
+                }
+            );
+        } finally {
+            setUserToDelete(null);
+        }
+    };
     const gridCols = "grid-cols-[50px_2.5fr_1.5fr_1.5fr_1.5fr_100px]";
 
     return (
         <div className="space-y-6">
+            <Toaster position="top-right" />
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && userToDelete && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in duration-300">
+                        <div className="text-center">
+                            {/* Warning Icon */}
+                            <div className="relative mx-auto w-20 h-20 mb-6">
+                                <div className="absolute inset-0 bg-red-100 rounded-full animate-pulse"></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="bg-gradient-to-br from-red-400 to-red-600 rounded-full p-4 shadow-lg">
+                                        <Trash2 className="w-8 h-8 text-white" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h3 className="text-2xl font-bold text-gray-800 mb-2">Delete User?</h3>
+                            <p className="text-gray-600 mb-2">
+                                Are you sure you want to delete <span className="font-semibold text-gray-800">"{userToDelete?.username}"</span>?
+                            </p>
+                            <p className="text-sm text-gray-500 mb-8">
+                                This action cannot be undone. User data will be permanently removed.
+                            </p>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowDeleteModal(false);
+                                        setUserToDelete(null);
+                                    }}
+                                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteConfirm}
+                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all shadow-sm hover:shadow-md"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
@@ -162,6 +298,7 @@ export default function Users() {
                 columns={userColumns}
                 gridCols={gridCols}
                 title="All Users"
+                onDelete={(user)=>handleDeleteUser(user.id)}
                 onExport={() => exportUsersToExcel(users)}
                 onSearchTerm={search}
                 onSearchTermChange={(term) => setSearch(term)}
