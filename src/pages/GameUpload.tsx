@@ -33,6 +33,8 @@ export default function GameUpload() {
         fileName: string
         size: number
     } | null>(null);
+    const [thumbnailFile, setThumbnailFile]
+        = useState<File | null>(null);
     const isPublished = gameData?.status === "PUBLISHED";
     useEffect(() => {
         if (gameData) {
@@ -182,59 +184,115 @@ export default function GameUpload() {
 
     // Step 2: Upload file to R2
     const handleFileUpload = async () => {
-        if (!selectedFile || !gameId) return;
-        
-        // Show immediate feedback
+
+        if (!selectedFile || !gameId)
+            return;
+
         setIsUploading(true);
         setUploadProgress(1);
 
         try {
-            // 1. Get presigned URL (axios + auth)
-            const { data } = await api.post(`/api/games/${gameId}/upload`);
-            const { uploadUrl } = data;
-            console.log("Presigned URL:", uploadUrl);
-            // 2. Upload file directly to R2 (raw PUT)
+
+            const { data } =
+                await api.post(
+                    `/api/games/${gameId}/upload`
+                );
+
+            const {
+                gameUploadUrl,
+                thumbnailUploadUrl
+            } = data;
+
+            // Upload parallel
+            await Promise.all([
+
+                uploadFile(
+                    gameUploadUrl,
+                    selectedFile,
+                    "application/zip",
+                    setUploadProgress
+                ),
+
+                thumbnailFile &&
+                uploadFile(
+                    thumbnailUploadUrl,
+                    thumbnailFile,
+                    thumbnailFile.type
+                )
+
+            ]);
+
+            // Notify backend
+            await api.post(
+                `/api/games/${gameId}/upload/complete`
+            );
+
+            setIsUploading(false);
+
+            setStep("processing");
+
+            startPollingStatus();
+
+        } catch (err) {
+
+            console.error(err);
+
+            setIsUploading(false);
+
+            setStep("error");
+
+            setErrorMessage(
+                "Upload failed"
+            );
+
+        }
+
+    };
+    const uploadFile = (
+        url: string,
+        file: File,
+        contentType: string,
+        onProgress?: (percent: number) => void
+    ) => {
+        return new Promise<void>((resolve, reject) => {
+
             const xhr = new XMLHttpRequest();
 
-            xhr.upload.addEventListener("progress", (e) => {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    setUploadProgress(Math.round(percentComplete));
-                }
-            });
+            xhr.upload.addEventListener(
+                "progress",
+                (e) => {
+                    if (e.lengthComputable && onProgress) {
 
-            xhr.addEventListener("load", async () => {
+                        const percent =
+                            (e.loaded / e.total) * 100;
+
+                        onProgress(
+                            Math.round(percent)
+                        );
+                    }
+                });
+
+            xhr.onload = () => {
                 if (xhr.status === 200) {
-                    // tell backend upload is done
-                    await api.post(`/api/games/${gameId}/upload/complete`);
-
-                    setIsUploading(false);
-                    setStep("processing");
-                    startPollingStatus();
+                    resolve();
                 } else {
-                    setIsUploading(false);
-                    setStep("error");
-                    setErrorMessage("Upload failed");
+
+                    reject("Upload failed");
                 }
-            });
+            };
 
+            xhr.onerror =
+                () => reject("Upload error");
 
-            xhr.addEventListener("error", () => {
-                setIsUploading(false);
-                setStep("error");
-                setErrorMessage("Upload failed. Please try again.");
-            });
+            xhr.open("PUT", url);
 
-            xhr.open("PUT", uploadUrl);
-            xhr.setRequestHeader("Content-Type", "application/zip");
-            xhr.send(selectedFile);
+            xhr.setRequestHeader(
+                "Content-Type",
+                contentType
+            );
 
-        } catch (error) {
-            console.error("Error uploading file:", error);
-            setIsUploading(false);
-            setStep("error");
-            setErrorMessage("Upload failed. Please try again.");
-        }
+            xhr.send(file);
+        });
     };
     const handleProcessExistingZip = async () => {
         if (!gameId) return;
@@ -587,7 +645,49 @@ export default function GameUpload() {
                                     </p>
                                 </label>
                             </div>
+                            {/* Thumbnail Upload */}
 
+                            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
+
+                                <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    onChange={(e) =>
+                                        setThumbnailFile(
+                                            e.target.files?.[0] || null
+                                        )
+                                    }
+                                    className="hidden"
+                                    id="thumbnail-upload"
+                                    disabled={isUploading}
+                                />
+
+                                <label
+                                    htmlFor="thumbnail-upload"
+                                    className={`cursor-pointer ${isUploading
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : ""
+                                        }`}
+                                >
+
+                                    <p className="font-medium text-gray-700">
+
+                                        {thumbnailFile
+                                            ? thumbnailFile.name
+                                            : "Click to select thumbnail image"
+                                        }
+
+                                    </p>
+
+                                    <p className="text-sm text-gray-500">
+
+                                        PNG / JPG / WEBP
+
+                                    </p>
+
+                                </label>
+
+                            </div>
                             {selectedFile && (
                                 <div className="bg-purple-50 rounded-xl p-4">
                                     <div className="flex items-center justify-between">
@@ -604,7 +704,7 @@ export default function GameUpload() {
                                     handleFileUpload
                                 }
                                 disabled={
-                                    (!selectedFile) || isUploading
+                                    (!selectedFile) || (!thumbnailFile) || isUploading
                                 }
                                 className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-blue-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
@@ -613,7 +713,7 @@ export default function GameUpload() {
 
                         </div>
                     )}
-
+                   
                     {/* Step 3: Processing */}
                     {step === "processing" && (
                         <div className="text-center py-12">
