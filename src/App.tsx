@@ -10,7 +10,6 @@ import DashBoard from "./pages/DashBoard";
 import Users from "./pages/Users";
 import Games from "./pages/Games";
 import GameUpload from "./pages/GameUpload";
-import { Toaster } from "react-hot-toast";
 function NavigatorSetup()
 {
   const navigate = useNavigate();

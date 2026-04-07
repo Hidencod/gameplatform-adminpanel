@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "../context/authContext";
+import { useAuth } from "../context/AuthContext";
 
 interface PrivateRouteProps{
     role?:'ROLE_ADMIN'|'ROLE_USER';

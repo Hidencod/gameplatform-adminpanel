@@ -1,3 +1,5 @@
+export type GameStatus = "DRAFT" | "UPLOADING" | "PROCESSING" | "PUBLISHED" | "FAILED";
+
 export interface Game {
     id: number;
     name: string;
@@ -9,7 +11,7 @@ export interface Game {
     playCount: number;
     averageRating: number;
     createdAt: string; // ISO date from backend
-    status:String;
+    status: GameStatus; // use the literal type
 }
 export interface GameStatusResponse {
     id: number;

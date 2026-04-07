@@ -1,8 +1,8 @@
-import { FaCheckCircle, FaPen, FaTimesCircle, FaUsers, FaGamepad, FaTrophy } from "react-icons/fa";
+import { FaCheckCircle, FaUsers, FaGamepad, FaTrophy } from "react-icons/fa";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getUsers } from "../services/userService";
-import type { User } from "../types/user";
+
 import { getGames } from "../services/gameService";
 import type { Game } from "../types/game";
 

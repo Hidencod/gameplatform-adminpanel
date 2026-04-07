@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Upload, FileText, Tag, Loader2, CheckCircle, XCircle, ArrowLeft, Sparkles, Zap, Package } from "lucide-react";
+import { Upload, FileText, Loader2, CheckCircle, XCircle, ArrowLeft, Sparkles, Zap, Package } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import { createGame, getGameById, getGameStatus, getGameZipStatus, updateGame } from "../services/gameService";
@@ -35,7 +35,7 @@ export default function GameUpload() {
     } | null>(null);
     const [thumbnailFile, setThumbnailFile]
         = useState<File | null>(null);
-    const isPublished = gameData?.status === "PUBLISHED";
+    
     useEffect(() => {
         if (gameData) {
             setIsEditing(true);
@@ -66,26 +66,22 @@ export default function GameUpload() {
         }
     }, [location.state])
     // Function to handle step navigation
-    const canNavigateToStep = (targetStep: UploadStep): boolean => {
-        if (isEditing) {
-            // When editing, allow navigation to any step
-            return true;
-        }
+    // const canNavigateToStep = (targetStep: UploadStep): boolean => {
+    //     if (isEditing) {
+    //         // When editing, allow navigation to any step
+    //         return true;
+    //     }
 
-        // When creating new game, enforce sequential flow
-        const stepOrder = ["metadata", "upload", "processing", "complete"];
-        const currentIndex = stepOrder.indexOf(step);
-        const targetIndex = stepOrder.indexOf(targetStep);
+    //     // When creating new game, enforce sequential flow
+    //     const stepOrder = ["metadata", "upload", "processing", "complete"];
+    //     const currentIndex = stepOrder.indexOf(step);
+    //     const targetIndex = stepOrder.indexOf(targetStep);
 
-        // Only allow going to current or previous steps
-        return targetIndex <= currentIndex;
-    };
+    //     // Only allow going to current or previous steps
+    //     return targetIndex <= currentIndex;
+    // };
 
-    const goToStep = (targetStep: UploadStep) => {
-        if (canNavigateToStep(targetStep)) {
-            setStep(targetStep);
-        }
-    };
+   
     // Metadata form
     const [metadata, setMetadata] = useState<GameMetadata>({
         name: "",
@@ -108,7 +104,7 @@ export default function GameUpload() {
                 if (response.status === 200) {
 
                     toast.success(
-                        (t) => (
+                        () => (
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                                     <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -474,7 +470,9 @@ export default function GameUpload() {
 
                                 <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
                                     <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span>{(selectedFile && selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                                    <span>
+                                        {(selectedFile?.size ? (selectedFile.size / 1024 / 1024).toFixed(2) : "0")} MB
+                                    </span>
                                 </div>
                             </div>
                         </div>

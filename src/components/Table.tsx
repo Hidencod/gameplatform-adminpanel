@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState } from "react";
-import { Search, Filter, Download, Plus } from "lucide-react";
+import { Search, Download, Plus } from "lucide-react";
 
 export interface Columns<T> {
     key: string;

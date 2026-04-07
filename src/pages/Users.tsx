@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { deleteUserById, getUsers, updateUser } from "../services/userService";
 import type { User } from "../types/user";
 import Pagination from "../components/Pagination";
@@ -6,8 +6,8 @@ import { useSearchParams } from "react-router-dom";
 import type { Columns } from "../components/Table";
 import ImprovedTable from "../components/Table";
 import { exportUsersToExcel } from "../utils/xlsx";
-import { Filter, Trash2 } from "lucide-react";
-import Filters from "../components/Filters";
+import { Trash2 } from "lucide-react";
+import Filters, { type FilterOption } from "../components/Filters";
 import { toast } from "react-hot-toast";
 import { Toaster } from "react-hot-toast";
 
@@ -46,14 +46,21 @@ export default function Users() {
             setTotalUsers(res.data.totalElements);
         });
     };
-    const userFilterOptions = [
+    const userFilterOptions: FilterOption[] = [
         {
-            key: "role", label: "Role", type: "select", options: [
+            key: "role",
+            label: "Role",
+            type: "select",
+            options: [
                 { label: "Admin", value: "ROLE_ADMIN" },
                 { label: "User", value: "ROLE_USER" },
-            ]
+            ],
         },
-        { key: "active", label: "Active", type: "checkbox" }
+        {
+            key: "username",
+            label: "Username",
+            type: "text",
+        },
     ];
     const userColumns: Columns<User>[] = [
         {
@@ -75,7 +82,7 @@ export default function Users() {
             key: "role",
             header: "Role",
             render: (user) => (
-                <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-medium ${user.role === 'ADMIN'
+                <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-medium ${user.role === "ROLE_ADMIN"
                     ? 'bg-purple-100 text-purple-700'
                     : 'bg-emerald-100 text-emerald-700'
                     }`}>
@@ -109,14 +116,14 @@ export default function Users() {
         if (!userToEdit) return;
 
         try {
-            const resp = await updateUser(userToEdit.id, {
+             await updateUser(userToEdit.id, {
                 role: updatedUser.role,
                 active: updatedUser.active
             });
             setShowEditModal(false);
             //show success toast
             toast.success(
-                (t) => (
+                () => (
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                             <svg
@@ -176,7 +183,7 @@ export default function Users() {
             console.log(resp);
             // Success toast with custom styling
             toast.success(
-                (t) => (
+                () => (
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                             <svg
@@ -217,7 +224,7 @@ export default function Users() {
         } catch (error) {
             // Error toast
             toast.error(
-                (t) => (
+                () => (
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                             <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,7 +267,12 @@ export default function Users() {
                                 <select
                                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     value={userToEdit.role}
-                                    onChange={(e) => setUserToEdit({ ...userToEdit, role: e.target.value })}
+                                    onChange={(e) =>
+                                        setUserToEdit({
+                                            ...userToEdit,
+                                            role: e.target.value as "ROLE_ADMIN" | "ROLE_USER",
+                                        })
+                                    }
                                 >
                                     <option value="ROLE_USER">User</option>
                                     <option value="ROLE_ADMIN">Admin</option>

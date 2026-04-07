@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Gamepad, Home, User, Search, Bell, Settings, Menu } from "lucide-react";
+import { Gamepad, Home, User, Settings, Menu } from "lucide-react";
 import { useState } from "react";
 
 export default function DashboardLayout() {

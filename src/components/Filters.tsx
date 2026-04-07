@@ -1,6 +1,6 @@
-import React from "react";
 
-interface FilterOption {
+
+export interface FilterOption {
     key: string;
     label: string;
     type: "select" | "checkbox" | "text";

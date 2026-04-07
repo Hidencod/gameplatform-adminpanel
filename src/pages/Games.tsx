@@ -9,7 +9,8 @@ import { Star, TrendingUp, Users, Gamepad2, Trash2 } from "lucide-react";
 import { navigateTo } from "../utils/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { exportGamesToExcel } from "../utils/xlsx";
-import Filters from "../components/Filters";
+import Filters, { type FilterOption } from "../components/Filters";
+
 type GameFilters = {
     category?: "ACTION" | "ADVENTURE" | "STRATEGY";
     tags?: string;
@@ -27,7 +28,7 @@ export default function Games() {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     //show filters for category, status, etc
     const [filters, setFilters] = useState<GameFilters>({});
-    const [tags, setTags] = useState("");           // immediate value from input
+    const [tags] = useState("");           // immediate value from input
     const [debouncedTags, setDebouncedTags] = useState(""); // debounced value used in API
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -50,7 +51,7 @@ export default function Games() {
     }, [page, debouncedTags, filters, debouncedSearch]);
     const fetchGames = () => {
         const activeFilters = Object.fromEntries(
-            Object.entries(filters).filter(([key, value]) => value !== "" && value !== undefined)
+            Object.entries(filters).filter(([_, value]) => value !== "" && value !== undefined)
         );
 
         // Include debounced tags
@@ -67,26 +68,34 @@ export default function Games() {
         setShowDeleteModal(true);
     };
 
-    const gameFilterOptions = [
-
+    const gameFilterOptions: FilterOption[] = [
         {
-            key: "category", label: "Category", type: "select", options: [
+            key: "category",
+            label: "Category",
+            type: "select",
+            options: [
                 { label: "Action", value: "ACTION" },
                 { label: "Adventure", value: "ADVENTURE" },
                 { label: "Strategy", value: "STRATEGY" },
-            ]
+            ],
         },
         {
-            key:"tags", label:"Tags", type:"text"
-        }
-    ,
-        { key: "status", label: "Status", type: "select", options: [
-            { label: "Draft", value: "DRAFT" },
-            { label: "Uploading", value: "UPLOADING" },
-            { label: "Processing", value: "PROCESSING" },
-            { label: "Published", value: "PUBLISHED" },
-            { label: "Failed", value: "FAILED" },
-        ] }
+            key: "tags",
+            label: "Tags",
+            type: "text", // no options needed for text
+        },
+        {
+            key: "status",
+            label: "Status",
+            type: "select",
+            options: [
+                { label: "Draft", value: "DRAFT" },
+                { label: "Uploading", value: "UPLOADING" },
+                { label: "Processing", value: "PROCESSING" },
+                { label: "Published", value: "PUBLISHED" },
+                { label: "Failed", value: "FAILED" },
+            ],
+        },
     ];
     const handleDeleteConfirm = async () => {
         if (!gameToDelete) return;
@@ -94,12 +103,12 @@ export default function Games() {
         setShowDeleteModal(false);
 
         try {
-            const resp = await deleteGame(gameToDelete.id);
+            await deleteGame(gameToDelete.id);
            
 
             // Success toast with custom styling
             toast.success(
-                (t) => (
+                () => (
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
                             <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,7 +138,7 @@ export default function Games() {
         } catch (error) {
             // Error toast
             toast.error(
-                (t) => (
+                () => (
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                             <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,7 +153,7 @@ export default function Games() {
                 ),
                 {
                     duration: 3000,
-                    icon: false, // Hide default icon
+                    icon: null, // Hide default icon
                     style: {
                         background: '#fff',
                         padding: '16px',
