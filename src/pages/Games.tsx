@@ -260,7 +260,9 @@ export default function Games() {
                     </div>
                     <div className="flex items-center gap-1">
                         <Star size={14} className="text-amber-400 fill-amber-400" />
-                        <span className="text-gray-700 font-medium text-sm">{game.averageRating.toFixed(1)}</span>
+                        <span className="text-gray-700 font-medium text-sm">
+                            {(Number(game.averageRating) || 0).toFixed(1)}
+                        </span>
                         <span className="text-gray-400 text-xs">rating</span>
                     </div>
                 </div>
