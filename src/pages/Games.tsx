@@ -180,7 +180,12 @@ export default function Games() {
     // Calculate stats from games data
     const totalPlays = games.reduce((sum, game) => sum + game.playCount, 0);
     const avgRating = games.length > 0
-        ? (games.reduce((sum, game) => sum + game.averageRating, 0) / games.length).toFixed(1)
+        ? (
+            games.reduce(
+                (sum, game) => sum + (Number(game.averageRating) || 0),
+                0
+            ) / games.length
+        ).toFixed(1)
         : "0.0";
     const statusStyles = {
         DRAFT: "bg-gray-100 text-gray-700",
