@@ -1,21 +1,51 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import Pagination from "../components/Pagination";
-import type { Columns } from "../components/Table";
-import ImprovedTable from "../components/Table";
 import type { Game } from "../types/game";
 import { deleteGame, getGames } from "../services/gameService";
-import { Star, TrendingUp, Users, Gamepad2, Trash2 } from "lucide-react";
 import { navigateTo } from "../utils/navigation";
 import toast, { Toaster } from "react-hot-toast";
 import { exportGamesToExcel } from "../utils/xlsx";
-import Filters, { type FilterOption } from "../components/Filters";
+import {
+    Trash2, Download, Search, ChevronLeft, ChevronRight,
+    Gamepad2, Star, Users, TrendingUp, Plus, ExternalLink, X
+} from "lucide-react";
 
-type GameFilters = {
-    category?: "ACTION" | "ADVENTURE" | "STRATEGY";
-    tags?: string;
-    status?: "DRAFT" | "UPLOADING" | "PROCESSING" | "PUBLISHED" | "FAILED";
+type GameFilters = { category?: string; status?: string };
+
+const STATUS_STYLES: Record<string, string> = {
+    PUBLISHED: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+    DRAFT: "bg-gray-100 text-gray-600",
+    UPLOADING: "bg-blue-50 text-blue-700 ring-1 ring-blue-100",
+    PROCESSING: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
+    FAILED: "bg-rose-50 text-rose-600 ring-1 ring-rose-100",
 };
+
+const STATUS_DOT: Record<string, string> = {
+    PUBLISHED: "bg-emerald-500",
+    DRAFT: "bg-gray-400",
+    UPLOADING: "bg-blue-500 animate-pulse",
+    PROCESSING: "bg-amber-500 animate-pulse",
+    FAILED: "bg-rose-500",
+};
+
+const CATEGORY_STYLES: Record<string, string> = {
+    ACTION: "bg-blue-50 text-blue-700",
+    ADVENTURE: "bg-purple-50 text-purple-700",
+    STRATEGY: "bg-amber-50 text-amber-700",
+    PUZZLE: "bg-teal-50 text-teal-700",
+    SPORTS: "bg-emerald-50 text-emerald-700",
+    RACING: "bg-rose-50 text-rose-700",
+    CASUAL: "bg-orange-50 text-orange-700",
+};
+
+const THUMB_COLORS = [
+    "from-purple-400 to-pink-500",
+    "from-blue-400 to-cyan-500",
+    "from-emerald-400 to-teal-500",
+    "from-amber-400 to-orange-500",
+    "from-rose-400 to-pink-500",
+];
+
 export default function Games() {
     const [games, setGames] = useState<Game[]>([]);
     const [params, setParams] = useSearchParams();
@@ -26,447 +56,347 @@ export default function Games() {
     const [gameToDelete, setGameToDelete] = useState<Game | null>(null);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-    //show filters for category, status, etc
     const [filters, setFilters] = useState<GameFilters>({});
-    const [tags] = useState("");           // immediate value from input
-    const [debouncedTags, setDebouncedTags] = useState(""); // debounced value used in API
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 500);
 
-        return () => {
-            clearTimeout(handler);
-        };
+    useEffect(() => {
+        const h = setTimeout(() => setDebouncedSearch(search), 500);
+        return () => clearTimeout(h);
     }, [search]);
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedTags(tags);
-        }, 500); // wait 300ms after typing stops
 
-        return () => clearTimeout(handler);
-    }, [tags]);
-    useEffect(() => {
-        fetchGames();
-    }, [page, debouncedTags, filters, debouncedSearch]);
+    useEffect(() => { fetchGames(); }, [page, filters, debouncedSearch]);
+
     const fetchGames = () => {
         const activeFilters = Object.fromEntries(
-            Object.entries(filters).filter(([_, value]) => value !== "" && value !== undefined)
+            Object.entries(filters).filter(([, v]) => v !== "" && v !== undefined)
         );
-
-        // Include debounced tags
-        if (debouncedTags) activeFilters.tags = debouncedTags;
-        return getGames(page, 10, debouncedSearch, activeFilters)
-            .then(res => {
-                setGames(res.data.content);
-                setTotalPages(res.data.totalPages);
-                setTotalGames(res.data.totalElements);
-            });
-    };
-    const handleDeleteClick = (game: Game) => {
-        setGameToDelete(game);
-        setShowDeleteModal(true);
+        getGames(page, 10, debouncedSearch, activeFilters).then(res => {
+            setGames(res.data.content);
+            setTotalPages(res.data.totalPages);
+            setTotalGames(res.data.totalElements);
+        });
     };
 
-    const gameFilterOptions: FilterOption[] = [
-        {
-            key: "category",
-            label: "Category",
-            type: "select",
-            options: [
-                { label: "Action", value: "ACTION" },
-                { label: "Adventure", value: "ADVENTURE" },
-                { label: "Strategy", value: "STRATEGY" },
-            ],
-        },
-        {
-            key: "tags",
-            label: "Tags",
-            type: "text", // no options needed for text
-        },
-        {
-            key: "status",
-            label: "Status",
-            type: "select",
-            options: [
-                { label: "Draft", value: "DRAFT" },
-                { label: "Uploading", value: "UPLOADING" },
-                { label: "Processing", value: "PROCESSING" },
-                { label: "Published", value: "PUBLISHED" },
-                { label: "Failed", value: "FAILED" },
-            ],
-        },
-    ];
     const handleDeleteConfirm = async () => {
         if (!gameToDelete) return;
-
         setShowDeleteModal(false);
-
         try {
             await deleteGame(gameToDelete.id);
-           
-
-            // Success toast with custom styling
-            toast.success(
-                () => (
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="font-semibold text-gray-800">Game Deleted!</p>
-                            <p className="text-sm text-gray-600">{gameToDelete.name} has been removed</p>
-                        </div>
-                    </div>
-                ),
-                {
-                    duration: 3000,
-                    icon: null,
-                    style: {
-                        background: '#fff',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    },
-                }
-            );
-
+            toast.success(`"${gameToDelete.name}" deleted`);
             setGames(prev => prev.filter(g => g.id !== gameToDelete.id));
-            fetchGames(); // Refresh the list after deletion
-        } catch (error) {
-            // Error toast
-            toast.error(
-                () => (
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="font-semibold text-gray-800">Delete Failed</p>
-                            <p className="text-sm text-gray-600">Could not delete the game</p>
-                        </div>
-                    </div>
-                ),
-                {
-                    duration: 3000,
-                    icon: null, // Hide default icon
-                    style: {
-                        background: '#fff',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    },
-                }
-            );
+            fetchGames();
+        } catch {
+            toast.error("Failed to delete game");
         } finally {
             setGameToDelete(null);
         }
     };
-    const handleEditGame = (game:any)=>
-    {
-        navigateTo('/dashboard/games/upload', {
-            state: {
-                gameId: game.id,
-                gameData: game  // Pass entire game object
-            }
-        })
-    }
 
+    const totalPlays = games.reduce((s, g) => s + g.playCount, 0);
+    const avgRating = games.length
+        ? (games.reduce((s, g) => s + (Number(g.averageRating) || 0), 0) / games.length).toFixed(1)
+        : "—";
 
-    // Calculate stats from games data
-    const totalPlays = games.reduce((sum, game) => sum + game.playCount, 0);
-    const avgRating = games.length > 0
-        ? (
-            games.reduce(
-                (sum, game) => sum + (Number(game.averageRating) || 0),
-                0
-            ) / games.length
-        ).toFixed(1)
-        : "0.0";
-    const statusStyles = {
-        DRAFT: "bg-gray-100 text-gray-700",
-        UPLOADING: "bg-blue-100 text-blue-700",
-        PROCESSING: "bg-yellow-100 text-yellow-700",
-        PUBLISHED: "bg-green-100 text-green-700",
-        FAILED: "bg-red-100 text-red-700",
-    };
-    const gameColumns: Columns<Game>[] = [
-        {
-            key: "game",
-            header: "Game",
-            render: (game) => (
-                <div className="flex items-center gap-3">
-                    {game.thumbnailUrl ? (
-                        <img
-                            src={game.thumbnailUrl}
-                            alt={game.name}
-                            className="w-12 h-12 rounded-xl object-cover shadow-sm"
-                        />
-                    ) : (
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                            {game.name.charAt(0).toUpperCase()}
-                        </div>
-                    )}
-                    <div className="min-w-0">
-                        <p className="font-semibold text-gray-800 truncate">{game.name}</p>
-                        <p className="text-xs text-gray-500 truncate max-w-[200px]">{game.description}</p>
-                    </div>
-                </div>
-            )
-        },
-        {
-            key: "category",
-            header: "Category",
-            render: (game) => (
-                <span className="inline-flex px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                    {game.category}
-                </span>
-            )
-        },
-        {
-            key: "tags",
-            header: "Tags",
-            render: (game) => (
-                <div className="flex flex-wrap gap-1">
-                    {game.tags.slice(0, 2).map((tag, index) => (
-                        <span
-                            key={index}
-                            className="px-2 py-1 rounded-md text-xs font-medium bg-purple-50 text-purple-600"
-                        >
-                            {tag}
-                        </span>
-                    ))}
-                    {game.tags.length > 2 && (
-                        <span className="px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-600">
-                            +{game.tags.length - 2}
-                        </span>
-                    )}
-                </div>
-            )
-        },
-        {
-            key: "stats",
-            header: "Performance",
-            render: (game) => (
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm">
-                        <Users size={14} className="text-gray-400" />
-                        <span className="text-gray-700 font-medium">{game.playCount.toLocaleString()}</span>
-                        <span className="text-gray-400 text-xs">plays</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <Star size={14} className="text-amber-400 fill-amber-400" />
-                        <span className="text-gray-700 font-medium text-sm">
-                            {(Number(game.averageRating) || 0).toFixed(1)}
-                        </span>
-                        <span className="text-gray-400 text-xs">rating</span>
-                    </div>
-                </div>
-            )
-        },
-        {
-            key: "link",
-            header: "Link",
-            render: (game) => (
-                game.gameUrl ? (
-                    <a
-                        href={game.gameUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group"
-                    >
-                        Play
-                        <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                    </a>
-                ) : (
-                    <span className="text-xs text-gray-400">No link</span>
-                )
-            )
-        },
-        {
-            key: "status",
-            header: "Status",
-            render: (game) => (
-                <span
-                    className={`inline-flex px-3 py-1.5 rounded-full text-xs font-medium ${statusStyles[game.status] || "bg-gray-100 text-gray-700"
-                        }`}
-                >
-                    {game.status}
-                </span>
-            )
-        }
-    ];
+    const getThumbColor = (name: string) =>
+        THUMB_COLORS[name.charCodeAt(0) % THUMB_COLORS.length];
 
-    const gridCols = "grid-cols-[50px_2.5fr_1.2fr_1.3fr_1.5fr_100px_150px_100px]";
+    const hasActiveFilters = filters.category || filters.status;
 
     return (
-        
         <div className="space-y-6">
             <Toaster position="top-right" />
-            {/* Delete Confirmation Modal */}
+
+            {/* Delete Modal */}
             {showDeleteModal && gameToDelete && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in duration-300">
-                        <div className="text-center">
-                            {/* Warning Icon */}
-                            <div className="relative mx-auto w-20 h-20 mb-6">
-                                <div className="absolute inset-0 bg-red-100 rounded-full animate-pulse"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="bg-gradient-to-br from-red-400 to-red-600 rounded-full p-4 shadow-lg">
-                                        <Trash2 className="w-8 h-8 text-white" />
-                                    </div>
-                                </div>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+                        <div className="p-6 text-center">
+                            <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Trash2 size={20} className="text-rose-600" />
                             </div>
-
-                            <h3 className="text-2xl font-bold text-gray-800 mb-2">Delete Game?</h3>
-                            <p className="text-gray-600 mb-2">
-                                Are you sure you want to delete <span className="font-semibold text-gray-800">"{gameToDelete.name}"</span>?
+                            <h3 className="text-base font-semibold text-gray-900 mb-1">Delete game?</h3>
+                            <p className="text-sm text-gray-500">
+                                <span className="font-medium text-gray-700">"{gameToDelete.name}"</span> will be permanently removed along with all its data.
                             </p>
-                            <p className="text-sm text-gray-500 mb-8">
-                                This action cannot be undone. All game data will be permanently removed.
-                            </p>
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        setShowDeleteModal(false);
-                                        setGameToDelete(null);
-                                    }}
-                                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleDeleteConfirm}
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all shadow-sm hover:shadow-md"
-                                >
-                                    Delete
-                                </button>
-                            </div>
+                        </div>
+                        <div className="px-6 pb-6 flex gap-3">
+                            <button
+                                onClick={() => { setShowDeleteModal(false); setGameToDelete(null); }}
+                                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteConfirm}
+                                className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-rose-500 rounded-xl hover:bg-rose-600 transition-colors"
+                            >
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
-                            <Gamepad2 className="w-5 h-5 text-white" />
+            {/* Page Header */}
+            <div>
+                <h1 className="text-2xl font-semibold text-gray-800">Games</h1>
+                <p className="text-sm text-gray-500 mt-1">Manage, publish and monitor your game catalog.</p>
+            </div>
+
+            {/* Stat Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                    { label: "Total games", value: totalGames.toLocaleString(), icon: <Gamepad2 size={18} />, color: "from-purple-400 to-purple-600", badge: "+8 this week" },
+                    { label: "Total plays", value: totalPlays.toLocaleString(), icon: <Users size={18} />, color: "from-blue-400 to-blue-600", badge: "+15.3%" },
+                    { label: "Avg. rating", value: avgRating, icon: <Star size={18} />, color: "from-amber-400 to-amber-600", badge: "this page" },
+                    { label: "Trending", value: "24", icon: <TrendingUp size={18} />, color: "from-emerald-400 to-emerald-600", badge: "this week" },
+                ].map(stat => (
+                    <div key={stat.label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center text-white flex-shrink-0 shadow-sm`}>
+                            {stat.icon}
                         </div>
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Games</p>
-                            <p className="text-2xl font-bold text-gray-800">{totalGames}</p>
+                        <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate">{stat.label}</p>
+                            <p className="text-2xl font-bold text-gray-800 leading-tight">{stat.value}</p>
+                            <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-md">{stat.badge}</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1 text-xs">
-                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-lg">+8 new</span>
-                        <span className="text-gray-400">this week</span>
+                ))}
+            </div>
+
+            {/* Table Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+                {/* Toolbar */}
+                <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1">
+                        <h2 className="text-base font-semibold text-gray-800 whitespace-nowrap">All games</h2>
+                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {totalGames.toLocaleString()}
+                        </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center flex-wrap">
+                        <div className="relative">
+                            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="Search games…"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent w-full sm:w-52 transition-all"
+                            />
+                        </div>
+                        <select
+                            value={filters.category || ""}
+                            onChange={e => setFilters(f => ({ ...f, category: e.target.value || undefined }))}
+                            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                        >
+                            <option value="">All categories</option>
+                            {["ACTION", "ADVENTURE", "STRATEGY", "PUZZLE", "SPORTS", "RACING", "CASUAL"].map(c => (
+                                <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={filters.status || ""}
+                            onChange={e => setFilters(f => ({ ...f, status: e.target.value || undefined }))}
+                            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                        >
+                            <option value="">All statuses</option>
+                            {["PUBLISHED", "DRAFT", "UPLOADING", "PROCESSING", "FAILED"].map(s => (
+                                <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+                            ))}
+                        </select>
+                        {hasActiveFilters && (
+                            <button
+                                onClick={() => setFilters({})}
+                                className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 transition-colors whitespace-nowrap"
+                            >
+                                <X size={13} /> Clear
+                            </button>
+                        )}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => exportGamesToExcel(games)}
+                                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                            >
+                                <Download size={14} /> Export
+                            </button>
+                            <button
+                                onClick={() => navigateTo("/dashboard/games/upload")}
+                                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl hover:from-purple-600 hover:to-blue-600 transition-all shadow-sm"
+                            >
+                                <Plus size={14} /> Upload
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                            <Users className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Plays</p>
-                            <p className="text-2xl font-bold text-gray-800">{totalPlays.toLocaleString()}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-lg">+15.3%</span>
-                        <span className="text-gray-400">vs last month</span>
-                    </div>
+                {/* Table */}
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[700px]">
+                        <thead>
+                            <tr className="border-b border-gray-100 bg-gray-50/60">
+                                {["#", "Game", "Category", "Tags", "Performance", "Status", "Actions"].map(h => (
+                                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap first:pl-5">
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {games.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="py-16 text-center">
+                                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <Gamepad2 size={20} className="text-gray-400" />
+                                        </div>
+                                        <p className="text-sm font-medium text-gray-500">No games found</p>
+                                        <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
+                                    </td>
+                                </tr>
+                            ) : games.map(game => (
+                                <tr key={game.id} className="hover:bg-gray-50/80 transition-colors">
+
+                                    {/* Game */}
+                                    <td className="pl-5 pr-4 py-3.5 text-xs font-mono text-gray-400">{game.id}</td>
+                                    <td className="pl-5 pr-4 py-3.5">
+                                        <div className="flex items-center gap-3">
+                                            {game.thumbnailUrl ? (
+                                                <img src={game.thumbnailUrl} alt={game.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+                                            ) : (
+                                                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getThumbColor(game.name)} flex items-center justify-center text-white font-bold text-base flex-shrink-0`}>
+                                                    {game.name.charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-gray-800 truncate max-w-[160px]">{game.name}</p>
+                                                <p className="text-xs text-gray-400 truncate max-w-[160px]">{game.description}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    {/* Category */}
+                                    <td className="px-4 py-3.5">
+                                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium ${CATEGORY_STYLES[game.category] ?? "bg-gray-100 text-gray-600"}`}>
+                                            {game.category
+                                                ? game.category.charAt(0) + game.category.slice(1).toLowerCase()
+                                                : "—"}
+                                        </span>
+                                    </td>
+
+                                    {/* Tags */}
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex flex-wrap gap-1">
+                                            {game.tags.slice(0, 2).map((tag, i) => (
+                                                <span key={i} className="px-2 py-0.5 rounded-md text-xs bg-gray-100 text-gray-500">{tag}</span>
+                                            ))}
+                                            {game.tags.length > 2 && (
+                                                <span className="px-2 py-0.5 rounded-md text-xs bg-gray-100 text-gray-400">+{game.tags.length - 2}</span>
+                                            )}
+                                        </div>
+                                    </td>
+
+                                    {/* Performance */}
+                                    <td className="px-4 py-3.5">
+                                        {game.playCount > 0 ? (
+                                            <div className="space-y-0.5">
+                                                <div className="flex items-center gap-1.5 text-sm">
+                                                    <Users size={12} className="text-gray-400" />
+                                                    <span className="font-medium text-gray-700">{game.playCount.toLocaleString()}</span>
+                                                    <span className="text-xs text-gray-400">plays</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <Star size={12} className="text-amber-400 fill-amber-400" />
+                                                    <span className="text-sm font-medium text-gray-700">{(Number(game.averageRating) || 0).toFixed(1)}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-gray-300">—</span>
+                                        )}
+                                    </td>
+
+                                    {/* Status */}
+                                    <td className="px-4 py-3.5">
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${STATUS_STYLES[game.status] ?? "bg-gray-100 text-gray-600"}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[game.status] ?? "bg-gray-400"}`} />
+                                            {game.status.charAt(0) + game.status.slice(1).toLowerCase()}
+                                        </span>
+                                    </td>
+
+                                    {/* Actions */}
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex items-center gap-1">
+                                            {game.gameUrl && (
+                                                <a
+                                                    href={game.gameUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                                    title="Play"
+                                                >
+                                                    <ExternalLink size={14} />
+                                                </a>
+                                            )}
+                                            <button
+                                                onClick={() => navigateTo("/dashboard/games/upload", { state: { gameId: game.id, gameData: game } })}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all"
+                                                title="Edit"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => { setGameToDelete(game); setShowDeleteModal(true); }}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-                            <Star className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Avg. Rating</p>
-                            <p className="text-2xl font-bold text-gray-800">{avgRating}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-lg">+0.3</span>
-                        <span className="text-gray-400">improvement</span>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                            <TrendingUp className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Trending</p>
-                            <p className="text-2xl font-bold text-gray-800">24</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-lg">Hot</span>
-                        <span className="text-gray-400">this week</span>
+                {/* Pagination */}
+                <div className="px-5 py-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <p className="text-sm text-gray-500">
+                        Page <span className="font-medium text-gray-700">{page + 1}</span> of{" "}
+                        <span className="font-medium text-gray-700">{totalPages}</span>
+                        <span className="text-gray-400 ml-2">· {totalGames.toLocaleString()} total</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            disabled={page === 0}
+                            onClick={() => setParams({ page: String(page - 1) })}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            <ChevronLeft size={15} /> Prev
+                        </button>
+                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => setParams({ page: String(i) })}
+                                className={`w-8 h-8 text-sm font-medium rounded-xl transition-all ${page === i
+                                        ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm"
+                                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                    }`}
+                            >
+                                {i + 1}
+                            </button>
+                        ))}
+                        <button
+                            disabled={page === totalPages - 1}
+                            onClick={() => setParams({ page: String(page + 1) })}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            Next <ChevronRight size={15} />
+                        </button>
                     </div>
                 </div>
             </div>
-
-            {/* Category Filter Pills */}
-            {/* <div className="flex items-center gap-3 overflow-x-auto pb-2">
-                <button className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 text-white font-medium text-sm whitespace-nowrap shadow-sm">
-                    All Games
-                </button>
-                <button className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 font-medium text-sm whitespace-nowrap transition-colors">
-                    Action
-                </button>
-                <button className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 font-medium text-sm whitespace-nowrap transition-colors">
-                    Puzzle
-                </button>
-                <button className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 font-medium text-sm whitespace-nowrap transition-colors">
-                    Adventure
-                </button>
-                <button className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 font-medium text-sm whitespace-nowrap transition-colors">
-                    Strategy
-                </button>
-                <button className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 font-medium text-sm whitespace-nowrap transition-colors">
-                    Sports
-                </button>
-            </div> */}
-
-            {/* Games Table */}
-            <ImprovedTable
-                data={games}
-                columns={gameColumns}
-                gridCols={gridCols}
-                title="All Games"
-                onAdd={() => navigateTo("/dashboard/games/upload")}
-                onExport={() => exportGamesToExcel(games)}
-                onDelete={(game) => handleDeleteClick(game)}
-                onEdit={(game)=>handleEditGame(game)}
-                onSearchTerm={search}
-                onSearchTermChange={(term) => setSearch(term)}
-                filterComponent={<Filters filters={filters} setFilters={setFilters} filterOptions={gameFilterOptions} />}
-            />
-
-            {/* Pagination */}
-            <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={(currentPage) => setParams({
-                    page: currentPage.toString()
-                })}
-            />
         </div>
     );
 }

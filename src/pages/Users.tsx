@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { deleteUserById, getUsers, updateUser } from "../services/userService";
 import type { User } from "../types/user";
-import Pagination from "../components/Pagination";
 import { useSearchParams } from "react-router-dom";
-import type { Columns } from "../components/Table";
-import ImprovedTable from "../components/Table";
 import { exportUsersToExcel } from "../utils/xlsx";
-import { Trash2 } from "lucide-react";
-import Filters, { type FilterOption } from "../components/Filters";
-import { toast } from "react-hot-toast";
-import { Toaster } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
+import {
+    Trash2, Download, Search, ChevronLeft, ChevronRight,
+    Users as UsersIcon, UserCheck, UserPlus, X
+} from "lucide-react";
 
 export default function Users() {
     const [users, setUsers] = useState<User[]>([]);
@@ -19,422 +17,332 @@ export default function Users() {
     const [totalUsers, setTotalUsers] = useState(0);
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [filters, setFilters] = useState<Record<string, any>>({ role: "", active: "" });
+    const [roleFilter, setRoleFilter] = useState("");
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [userToEdit, setUserToEdit] = useState<User | null>(null);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-        }, 400);
+        const timer = setTimeout(() => setDebouncedSearch(search), 400);
         return () => clearTimeout(timer);
     }, [search]);
 
-    useEffect(() => {
-        fetchUsers();
-    }, [page, filters, debouncedSearch]);
+    useEffect(() => { fetchUsers(); }, [page, roleFilter, debouncedSearch]);
+
     const fetchUsers = () => {
-        // Strip out empty strings and false values before sending to API
-        const activeFilters = Object.fromEntries(
-            Object.entries(filters).filter(([_, v]) => v !== "" && v !== false && v !== undefined)
-        );
-        getUsers(page, 10, debouncedSearch, activeFilters).then((res) => {
+        const filters: Record<string, any> = {};
+        if (roleFilter) filters.role = roleFilter;
+        getUsers(page, 10, debouncedSearch, filters).then((res) => {
             setUsers(res.data.content);
             setTotalPages(res.data.totalPages);
             setTotalUsers(res.data.totalElements);
         });
     };
-    const userFilterOptions: FilterOption[] = [
-        {
-            key: "role",
-            label: "Role",
-            type: "select",
-            options: [
-                { label: "Admin", value: "ROLE_ADMIN" },
-                { label: "User", value: "ROLE_USER" },
-            ],
-        },
-        {
-            key: "username",
-            label: "Username",
-            type: "text",
-        },
-    ];
-    const userColumns: Columns<User>[] = [
-        {
-            key: "user",
-            header: "User",
-            render: (user) => (
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
-                        {user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                        <p className="font-medium text-gray-700">{user.username}</p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
-                    </div>
-                </div>
-            )
-        },
-        {
-            key: "role",
-            header: "Role",
-            render: (user) => (
-                <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-medium ${user.role === "ROLE_ADMIN"
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                    {user.role}
-                </span>
-            )
-        },
-        {
-            key: "status",
-            header: "Status",
-            render: (user) => (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    {user.active ? "Active" : "Inactive"}
-                </span>
-            )
-        },
-        {
-            key: "joined",
-            header: "Joined",
-            render: (user) => (
-                <span className="text-sm text-gray-600">{user.createdAt}</span>
-            )
-        }
-    ];
-    const handleEditUser = (user: User) => {
-        setUserToEdit(user);
-        setShowEditModal(true);
-    }
-    const handleEditConfirm = async (updatedUser: User) => {
+
+    const handleEditConfirm = async (updated: User) => {
         if (!userToEdit) return;
-
         try {
-             await updateUser(userToEdit.id, {
-                role: updatedUser.role,
-                active: updatedUser.active
-            });
+            await updateUser(userToEdit.id, { role: updated.role, active: updated.active });
             setShowEditModal(false);
-            //show success toast
-            toast.success(
-                () => (
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <svg
-                                className="w-5 h-5 text-emerald-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="font-semibold text-gray-800">User updated!</p>
-                            <p className="text-sm text-gray-600">
-                                {userToEdit.username} has been updated
-                            </p>
-                        </div>
-                    </div>
-                ),
-                {
-                    duration: 3000,
-                    icon: null, // 👈 ADD THIS
-                    style: {
-                        background: "#fff",
-                        padding: "16px",
-                        borderRadius: "12px",
-                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                    },
-                }
-            );
+            toast.success(`${userToEdit.username} updated successfully`);
             fetchUsers();
-        } catch (error) {
+        } catch {
             toast.error("Failed to update user");
-
         }
-    }
-    const handleDeleteUser = (id: number) => {
-        const user = users.find(user => user.id == id);
-        if (user)
-            setUserToDelete(user);
-        setShowDeleteModal(true);
+    };
 
-    }
     const handleDeleteConfirm = async () => {
         if (!userToDelete) return;
-
         setShowDeleteModal(false);
-
         try {
-            const resp = await deleteUserById(userToDelete.id);
-
-            console.log(resp);
-            // Success toast with custom styling
-            toast.success(
-                () => (
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <svg
-                                className="w-5 h-5 text-emerald-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="font-semibold text-gray-800">User deleted!</p>
-                            <p className="text-sm text-gray-600">
-                                {userToDelete.username} has been removed
-                            </p>
-                        </div>
-                    </div>
-                ),
-                {
-                    duration: 3000,
-                    icon: null, // 👈 ADD THIS
-                    style: {
-                        background: "#fff",
-                        padding: "16px",
-                        borderRadius: "12px",
-                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                    },
-                }
-            );
-
-            setUsers(prev => prev.filter(g => g.id !== userToDelete.id));
-        } catch (error) {
-            // Error toast
-            toast.error(
-                () => (
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="font-semibold text-gray-800">Delete Failed</p>
-                            <p className="text-sm text-gray-600">Could not delete the user</p>
-                        </div>
-                    </div>
-                ),
-                {
-                    duration: 3000,
-                    style: {
-                        background: '#fff',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    },
-                }
-            );
+            await deleteUserById(userToDelete.id);
+            toast.success(`${userToDelete.username} removed`);
+            setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+        } catch {
+            toast.error("Failed to delete user");
         } finally {
             setUserToDelete(null);
         }
     };
-    const gridCols = "grid-cols-[50px_2.5fr_1.5fr_1.5fr_1.5fr_100px]";
+
+    const avatarColors = [
+        "from-purple-400 to-purple-600",
+        "from-blue-400 to-blue-600",
+        "from-emerald-400 to-emerald-600",
+        "from-amber-400 to-amber-600",
+        "from-rose-400 to-rose-600",
+    ];
+    const getAvatarColor = (name: string) =>
+        avatarColors[name.charCodeAt(0) % avatarColors.length];
+
+    const activeUsers = users.filter(u => u.active).length;
 
     return (
         <div className="space-y-6">
             <Toaster position="top-right" />
-            {/* edit user modal */}
+
+            {/* Edit Modal */}
             {showEditModal && userToEdit && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in duration-300">
-                        <h3 className="text-2xl font-bold text-gray-800 mb-6">Edit User</h3>
-                        <div className="space-y-4">
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+                        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                <h3 className="text-base font-semibold text-gray-900">Edit user</h3>
+                                <p className="text-sm text-gray-500 mt-0.5">{userToEdit.username}</p>
+                            </div>
+                            <button onClick={() => setShowEditModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
                                 <select
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-gray-50"
                                     value={userToEdit.role}
-                                    onChange={(e) =>
-                                        setUserToEdit({
-                                            ...userToEdit,
-                                            role: e.target.value as "ROLE_ADMIN" | "ROLE_USER",
-                                        })
-                                    }
+                                    onChange={e => setUserToEdit({ ...userToEdit, role: e.target.value as User["role"] })}
                                 >
                                     <option value="ROLE_USER">User</option>
                                     <option value="ROLE_ADMIN">Admin</option>
                                 </select>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <label className="text-sm font-medium text-gray-700">Active</label>
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
-                                    checked={userToEdit.active}
-                                    onChange={(e) => setUserToEdit({ ...userToEdit, active: e.target.checked })}
-                                />
+                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-700">Active account</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">User can log in and access the platform</p>
+                                </div>
+                                <button
+                                    onClick={() => setUserToEdit({ ...userToEdit, active: !userToEdit.active })}
+                                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${userToEdit.active ? "bg-purple-500" : "bg-gray-300"}`}
+                                >
+                                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${userToEdit.active ? "translate-x-5" : "translate-x-0"}`} />
+                                </button>
                             </div>
                         </div>
-                        <div className="mt-6 flex gap-3">
-                            <button
-                                onClick={() => {
-                                    setShowEditModal(false);
-                                    setUserToEdit(null);
-                                }}
-                                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-                            >
+                        <div className="px-6 py-4 bg-gray-50 flex gap-3">
+                            <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                                 Cancel
                             </button>
-                            <button
-                                onClick={() => handleEditConfirm(userToEdit)}
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm hover:shadow-md"
-                            >
-                                Save Changes
+                            <button onClick={() => handleEditConfirm(userToEdit)} className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl hover:from-purple-600 hover:to-blue-600 transition-all">
+                                Save changes
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Modal */}
             {showDeleteModal && userToDelete && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in duration-300">
-                        <div className="text-center">
-                            {/* Warning Icon */}
-                            <div className="relative mx-auto w-20 h-20 mb-6">
-                                <div className="absolute inset-0 bg-red-100 rounded-full animate-pulse"></div>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="bg-gradient-to-br from-red-400 to-red-600 rounded-full p-4 shadow-lg">
-                                        <Trash2 className="w-8 h-8 text-white" />
-                                    </div>
-                                </div>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+                        <div className="p-6 text-center">
+                            <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Trash2 size={20} className="text-rose-600" />
                             </div>
-
-                            <h3 className="text-2xl font-bold text-gray-800 mb-2">Delete User?</h3>
-                            <p className="text-gray-600 mb-2">
-                                Are you sure you want to delete <span className="font-semibold text-gray-800">"{userToDelete?.username}"</span>?
+                            <h3 className="text-base font-semibold text-gray-900 mb-1">Delete user?</h3>
+                            <p className="text-sm text-gray-500">
+                                <span className="font-medium text-gray-700">{userToDelete.username}</span> will be permanently removed.
                             </p>
-                            <p className="text-sm text-gray-500 mb-8">
-                                This action cannot be undone. User data will be permanently removed.
-                            </p>
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        setShowDeleteModal(false);
-                                        setUserToDelete(null);
-                                    }}
-                                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleDeleteConfirm}
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all shadow-sm hover:shadow-md"
-                                >
-                                    Delete
-                                </button>
-                            </div>
+                        </div>
+                        <div className="px-6 pb-6 flex gap-3">
+                            <button onClick={() => { setShowDeleteModal(false); setUserToDelete(null); }} className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors">
+                                Cancel
+                            </button>
+                            <button onClick={handleDeleteConfirm} className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-rose-500 rounded-xl hover:bg-rose-600 transition-colors">
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
+
+            {/* Page Header */}
+            <div>
+                <h1 className="text-2xl font-semibold text-gray-800">Users</h1>
+                <p className="text-sm text-gray-500 mt-1">Manage accounts, roles and access.</p>
+            </div>
+
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                    { label: "Total users", value: totalUsers, icon: <UsersIcon size={18} />, color: "from-blue-400 to-blue-600", badge: "+12.5% vs last month" },
+                    { label: "Active users", value: activeUsers, icon: <UserCheck size={18} />, color: "from-emerald-400 to-emerald-600", badge: "on this page" },
+                    { label: "New today", value: 47, icon: <UserPlus size={18} />, color: "from-purple-400 to-purple-600", badge: "+23.1% vs yesterday" },
+                ].map(stat => (
+                    <div key={stat.label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center text-white flex-shrink-0 shadow-sm`}>
+                            {stat.icon}
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Users</p>
-                            <p className="text-2xl font-bold text-gray-800">{totalUsers}</p>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.label}</p>
+                            <p className="text-2xl font-bold text-gray-800 leading-tight">{stat.value.toLocaleString()}</p>
+                            <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded-md">{stat.badge}</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1 text-xs">
-                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-lg">+12.5%</span>
-                        <span className="text-gray-400">vs last month</span>
+                ))}
+            </div>
+
+            {/* Table Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+                {/* Toolbar */}
+                <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-2 flex-1">
+                        <h2 className="text-base font-semibold text-gray-800 whitespace-nowrap">All users</h2>
+                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {totalUsers.toLocaleString()}
+                        </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <div className="relative">
+                            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="Search users…"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl bg-gray-50 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent w-full sm:w-56 transition-all"
+                            />
+                        </div>
+                        <select
+                            value={roleFilter}
+                            onChange={e => setRoleFilter(e.target.value)}
+                            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                        >
+                            <option value="">All roles</option>
+                            <option value="ROLE_ADMIN">Admin</option>
+                            <option value="ROLE_USER">User</option>
+                        </select>
+                        <button
+                            onClick={() => exportUsersToExcel(users)}
+                            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                        >
+                            <Download size={14} /> Export
+                        </button>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Active Users</p>
-                            <p className="text-2xl font-bold text-gray-800">1,892</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-lg">+8.2%</span>
-                        <span className="text-gray-400">vs last month</span>
-                    </div>
+                {/* Table */}
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="border-b border-gray-100 bg-gray-50/60">
+                                {["#", "User", "Role", "Status", "Joined", "Actions"].map(h => (
+                                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider first:pl-5">
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {users.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="py-16 text-center">
+                                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <UsersIcon size={20} className="text-gray-400" />
+                                        </div>
+                                        <p className="text-sm font-medium text-gray-500">No users found</p>
+                                        <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
+                                    </td>
+                                </tr>
+                            ) : users.map(user => (
+                                <tr key={user.id} className="hover:bg-gray-50/80 transition-colors">
+                                    <td className="pl-5 pr-4 py-3.5 text-xs font-mono text-gray-400">{user.id}</td>
+                                    <td className="pl-5 pr-4 py-3.5">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${getAvatarColor(user.username)} flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>
+                                                {user.username.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-800">{user.username}</p>
+                                                <p className="text-xs text-gray-400">{user.email}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${user.role === "ROLE_ADMIN"
+                                                ? "bg-purple-50 text-purple-700 ring-1 ring-purple-100"
+                                                : "bg-gray-100 text-gray-600"
+                                            }`}>
+                                            {user.role === "ROLE_ADMIN" ? "Admin" : "User"}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${user.active
+                                                ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                                                : "bg-rose-50 text-rose-600 ring-1 ring-rose-100"
+                                            }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${user.active ? "bg-emerald-500" : "bg-rose-400"}`} />
+                                            {user.active ? "Active" : "Inactive"}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3.5 text-sm text-gray-400 whitespace-nowrap">
+                                        {new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => { setUserToEdit(user); setShowEditModal(true); }}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-all"
+                                                title="Edit"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => { setUserToDelete(user); setShowDeleteModal(true); }}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
 
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">New Today</p>
-                            <p className="text-2xl font-bold text-gray-800">47</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                        <span className="text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded-lg">+23.1%</span>
-                        <span className="text-gray-400">vs yesterday</span>
+                {/* Pagination */}
+                <div className="px-5 py-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <p className="text-sm text-gray-500">
+                        Page <span className="font-medium text-gray-700">{page + 1}</span> of{" "}
+                        <span className="font-medium text-gray-700">{totalPages}</span>
+                        <span className="text-gray-400 ml-2">· {totalUsers.toLocaleString()} total</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            disabled={page === 0}
+                            onClick={() => setParams({ page: String(page - 1) })}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            <ChevronLeft size={15} /> Prev
+                        </button>
+                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => setParams({ page: String(i) })}
+                                className={`w-8 h-8 text-sm font-medium rounded-xl transition-all ${page === i
+                                        ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm"
+                                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                    }`}
+                            >
+                                {i + 1}
+                            </button>
+                        ))}
+                        <button
+                            disabled={page === totalPages - 1}
+                            onClick={() => setParams({ page: String(page + 1) })}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                        >
+                            Next <ChevronRight size={15} />
+                        </button>
                     </div>
                 </div>
             </div>
-
-            {/* Users Table */}
-            <ImprovedTable
-                data={users}
-                columns={userColumns}
-                gridCols={gridCols}
-                title="All Users"
-                onDelete={(user) => handleDeleteUser(user.id)}
-                onExport={() => exportUsersToExcel(users)}
-                onEdit={(user) => handleEditUser(user)}
-                onSearchTerm={search}
-                onSearchTermChange={(term) => setSearch(term)}
-                filterComponent={<Filters filters={filters} setFilters={setFilters} filterOptions={userFilterOptions} />
-                }
-
-            />
-
-            {/* Pagination */}
-            <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={(currentPage) => setParams({
-                    page: currentPage.toString()
-                })}
-            />
         </div>
     );
 }
