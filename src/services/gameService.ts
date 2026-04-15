@@ -15,7 +15,7 @@ export const getGames = async (
             search: search || "",
             category: filters?.category || "",
             tag: filters?.tags || "",
-            status: filters?.status || "PUBLISHED",
+            status: filters?.status || "",
             sortBy:"playCount"
         }
     });

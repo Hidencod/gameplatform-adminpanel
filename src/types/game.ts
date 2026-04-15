@@ -2,6 +2,7 @@ export type GameStatus = "DRAFT" | "UPLOADING" | "PROCESSING" | "PUBLISHED" | "F
 
 export interface Game {
     id: number;
+    gameId: string;        // ← public facing ID like gm_a4f9b2c1
     name: string;
     description: string;
     gameUrl: string | null;
@@ -10,9 +11,10 @@ export interface Game {
     tags: string[];
     playCount: number;
     averageRating: number;
-    createdAt: string; // ISO date from backend
-    status: GameStatus; // use the literal type
+    createdAt: string;
+    status: GameStatus;
 }
+
 export interface GameStatusResponse {
     id: number;
     gameStatus: "DRAFT" | "UPLOADING" | "PROCESSING" | "PUBLISHED" | "FAILED";

@@ -7,7 +7,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { exportGamesToExcel } from "../utils/xlsx";
 import {
     Trash2, Download, Search, ChevronLeft, ChevronRight,
-    Gamepad2, Star, Users, TrendingUp, Plus, ExternalLink, X
+    Gamepad2, Star, Users, TrendingUp, Plus, ExternalLink, X, Copy, Check
 } from "lucide-react";
 
 type GameFilters = { category?: string; status?: string };
@@ -45,6 +45,34 @@ const THUMB_COLORS = [
     "from-amber-400 to-orange-500",
     "from-rose-400 to-pink-500",
 ];
+
+// ── Copy button ───────────────────────────────────────────────────────────────
+function CopyButton({ text }: { text: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            toast.error("Failed to copy");
+        }
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            className="p-1 rounded hover:bg-gray-100 transition-colors"
+            title="Copy Game ID"
+        >
+            {copied
+                ? <Check size={12} className="text-emerald-500" />
+                : <Copy size={12} className="text-gray-400 hover:text-gray-600" />
+            }
+        </button>
+    );
+}
 
 export default function Games() {
     const [games, setGames] = useState<Game[]>([]);
@@ -235,7 +263,7 @@ export default function Games() {
                     <table className="w-full min-w-[700px]">
                         <thead>
                             <tr className="border-b border-gray-100 bg-gray-50/60">
-                                {["#", "Game", "Category", "Tags", "Performance", "Status", "Actions"].map(h => (
+                                {["Game", "Game ID", "Category", "Tags", "Performance", "Status", "Actions"].map(h => (
                                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap first:pl-5">
                                         {h}
                                     </th>
@@ -257,7 +285,6 @@ export default function Games() {
                                 <tr key={game.id} className="hover:bg-gray-50/80 transition-colors">
 
                                     {/* Game */}
-                                    <td className="pl-5 pr-4 py-3.5 text-xs font-mono text-gray-400">{game.id}</td>
                                     <td className="pl-5 pr-4 py-3.5">
                                         <div className="flex items-center gap-3">
                                             {game.thumbnailUrl ? (
@@ -271,6 +298,16 @@ export default function Games() {
                                                 <p className="text-sm font-medium text-gray-800 truncate max-w-[160px]">{game.name}</p>
                                                 <p className="text-xs text-gray-400 truncate max-w-[160px]">{game.description}</p>
                                             </div>
+                                        </div>
+                                    </td>
+
+                                    {/* Game ID — the key column */}
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-mono text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-lg border border-purple-100">
+                                                {game.gameId ?? "—"}
+                                            </span>
+                                            {game.gameId && <CopyButton text={game.gameId} />}
                                         </div>
                                     </td>
 
@@ -380,8 +417,8 @@ export default function Games() {
                                 key={i}
                                 onClick={() => setParams({ page: String(i) })}
                                 className={`w-8 h-8 text-sm font-medium rounded-xl transition-all ${page === i
-                                        ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm"
-                                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                    ? "bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-sm"
+                                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
                                     }`}
                             >
                                 {i + 1}

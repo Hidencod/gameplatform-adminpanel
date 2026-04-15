@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Upload, FileText, Loader2, CheckCircle, XCircle, ArrowLeft, Sparkles, Zap, Package } from "lucide-react";
+import { Upload, FileText, Loader2, CheckCircle, XCircle, ArrowLeft, Sparkles, Zap, Package, Copy } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import { createGame, getGameById, getGameStatus, getGameZipStatus, updateGame } from "../services/gameService";
@@ -22,6 +22,7 @@ export default function GameUpload() {
     const location = useLocation();
     const [step, setStep] = useState<UploadStep>("metadata");
     const [gameId, setGameId] = useState<number | null>(null);
+    const [gamePublicId, setGamePublicId] = useState<string | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
     const [processingStatus, setProcessingStatus] = useState("");
@@ -170,6 +171,7 @@ export default function GameUpload() {
 
             const game = response.data;
             setGameId(game.id);
+            setGamePublicId(game.gameId ?? null);
             setStep("upload");
         } catch (error) {
             console.error("Error creating game:", error);
@@ -623,7 +625,32 @@ export default function GameUpload() {
 
                     {/* Step 2: File Upload */}
                     {step === "upload" && (
+                        
                         <div className="space-y-6">
+                            {gamePublicId && (
+                                <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                                    <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide mb-2">
+                                        Game ID — copy this into your Construct 3 plugin
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-sm font-bold text-purple-700 bg-white px-3 py-1.5 rounded-lg border border-purple-200">
+                                            {gamePublicId}
+                                        </span>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(gamePublicId);
+                                                toast.success("Game ID copied!");
+                                            }}
+                                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-600 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+                                        >
+                                            <Copy size={12} /> Copy
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-purple-400 mt-2">
+                                        You can always find this ID in the Games list later.
+                                    </p>
+                                </div>
+                            )}
                             <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-purple-400 transition-colors">
                                 <input
                                     type="file"
