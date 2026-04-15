@@ -9,6 +9,7 @@ import {
     Trash2, Download, Search, ChevronLeft, ChevronRight,
     Gamepad2, Star, Users, TrendingUp, Plus, ExternalLink, X, Copy, Check
 } from "lucide-react";
+import CreateGameModal from "./CreateGameModal";
 
 type GameFilters = { category?: string; status?: string };
 
@@ -85,6 +86,7 @@ export default function Games() {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [filters, setFilters] = useState<GameFilters>({});
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     useEffect(() => {
         const h = setTimeout(() => setDebouncedSearch(search), 500);
@@ -249,10 +251,10 @@ export default function Games() {
                                 <Download size={14} /> Export
                             </button>
                             <button
-                                onClick={() => navigateTo("/dashboard/games/upload")}
+                                onClick={() => setShowCreateModal(true)}
                                 className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl hover:from-purple-600 hover:to-blue-600 transition-all shadow-sm"
                             >
-                                <Plus size={14} /> Upload
+                                <Plus size={14} /> New Game
                             </button>
                         </div>
                     </div>
@@ -434,6 +436,16 @@ export default function Games() {
                     </div>
                 </div>
             </div>
+            {/* Create Game Modal */}
+            {showCreateModal && (
+                <CreateGameModal
+                    onClose={() => setShowCreateModal(false)}
+                    onCreated={(game) => {
+                        setGames(prev => [game, ...prev]);
+                        setTotalGames(prev => prev + 1);
+                    }}
+                />
+            )}
         </div>
     );
 }
