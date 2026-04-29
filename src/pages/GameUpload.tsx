@@ -11,6 +11,7 @@ interface GameMetadata {
     description: string;
     category: string;
     tags: string[];
+    platform: string;
 }
 
 type UploadStep = "metadata" | "upload" | "processing" | "complete" | "error";
@@ -39,19 +40,22 @@ export default function GameUpload() {
     
     useEffect(() => {
         if (gameData) {
+            console.log(gameData)
             setIsEditing(true);
             setMetadata({
                 name: gameData.name,
                 description: gameData.description,
                 category: gameData.category,
-                tags: gameData.tags
+                tags: gameData.tags,
+                platform: gameData.platform ?? "BOTH"
             });
+            
             setGameId(gameData.id);
             const checkExistingZip = async () => {
                 if (gameData.id) {
                     const res = await getGameZipStatus(gameData.id);
                     const data = await res.data;
-                    console.log(data);
+                    
                     if (data.exists) {
                         setExistingZip({
                             fileName: data.fileName,
@@ -88,7 +92,8 @@ export default function GameUpload() {
         name: "",
         description: "",
         category: "",
-        tags: []
+        tags: [],
+        platform: "BOTH"
     });
     const [tagInput, setTagInput] = useState("");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -528,7 +533,32 @@ export default function GameUpload() {
                                     ))}
                                 </select>
                             </div>
-
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Platform
+                                </label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[
+                                        { value: "BOTH", label: "Both", desc: "Desktop & Mobile", icon: "🌐" },
+                                        { value: "DESKTOP", label: "Desktop", desc: "PC & Laptop", icon: "🖥️" },
+                                        { value: "MOBILE", label: "Mobile", desc: "Phone & Tablet", icon: "📱" },
+                                    ].map(p => (
+                                        <button
+                                            key={p.value}
+                                            type="button"
+                                            onClick={() => setMetadata({ ...metadata, platform: p.value })}
+                                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all focus:outline-none ${metadata.platform === p.value
+                                                    ? "border-purple-400 bg-purple-50 text-purple-700"
+                                                    : "border-gray-200 text-gray-400 hover:border-gray-300"
+                                                }`}
+                                        >
+                                            <span className="text-xl">{p.icon}</span>
+                                            <span className="text-xs font-bold">{p.label}</span>
+                                            <span className="text-xs text-gray-400">{p.desc}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Tags
@@ -861,7 +891,8 @@ export default function GameUpload() {
                                                 name: game.name,
                                                 description: game.description,
                                                 category: game.category,
-                                                tags: game.tags || []
+                                                tags: game.tags || [],
+                                                platform: game.platform ?? "BOTH"
                                             });
                                             setIsEditing(true);
                                         }else{
